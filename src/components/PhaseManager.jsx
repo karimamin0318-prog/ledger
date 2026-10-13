@@ -1,7 +1,7 @@
 import { useState } from 'react';
 import { useLiveQuery } from 'dexie-react-hooks';
-import { Layers, X, ChevronDown, ChevronUp } from 'lucide-react';
-import { getAllPhases, getActivePhase, startPhase, endPhase, deletePhase, todayStr } from '../db';
+import { Layers } from 'lucide-react';
+import { getActivePhase, startPhase, endPhase, todayStr } from '../db';
 import { card, input, btnPrimary, btnSecondary, label } from '../ui';
 import { fmtShort } from '../dates';
 
@@ -9,13 +9,9 @@ export default function PhaseManager() {
   const [mode, setMode] = useState(null); // null | 'start' | 'end'
   const [name, setName] = useState('');
   const [dateVal, setDateVal] = useState(todayStr());
-  const [showHistory, setShowHistory] = useState(false);
   const [error, setError] = useState('');
 
-  const phases = useLiveQuery(() => getAllPhases(), [], []);
   const active = useLiveQuery(() => getActivePhase(), [], null);
-
-  const past = (phases || []).filter((p) => p.id !== active?.id).reverse();
 
   function openStart() {
     setName('');
@@ -128,31 +124,6 @@ export default function PhaseManager() {
         </>
       )}
 
-      {past.length > 0 && (
-        <div className="pt-1 border-t border-zinc-800/80">
-          <button
-            onClick={() => setShowHistory((v) => !v)}
-            className="flex items-center gap-1 text-xs text-zinc-500"
-          >
-            {showHistory ? <ChevronUp size={13} /> : <ChevronDown size={13} />}
-            {past.length} past {past.length === 1 ? 'phase' : 'phases'}
-          </button>
-          {showHistory && (
-            <div className="flex flex-col gap-1.5 mt-2">
-              {past.map((p) => (
-                <div key={p.id} className="flex items-center justify-between text-xs text-zinc-400">
-                  <span>
-                    {p.name} <span className="text-zinc-600">· {fmtShort(p.startDate)}–{fmtShort(p.endDate)}</span>
-                  </span>
-                  <button onClick={() => deletePhase(p.id)} className="text-zinc-700 active:text-red-400">
-                    <X size={13} />
-                  </button>
-                </div>
-              ))}
-            </div>
-          )}
-        </div>
-      )}
     </div>
   );
 }

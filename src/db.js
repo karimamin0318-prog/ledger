@@ -18,6 +18,21 @@ db.version(2).stores({
   phases: '++id, startDate',
 });
 
+db.version(3).stores({
+  logs: 'date',
+  phases: '++id, startDate',
+  // key/value app settings: theme, steps, sex, age, height
+  settings: 'key',
+});
+
+export const THEMES = { dark: 'Dark', light: 'Light', midnight: 'Midnight' };
+const DATE_RE = /^d{4}-d{2}-d{2}$/;
+const SETTING_KEYS = ['theme', 'steps', 'sex', 'age', 'height'];
+
+export function saveSetting(key, value) {
+  return db.settings.put({ key, value });
+}
+
 export function todayStr(offsetDays = 0) {
   const d = new Date();
   d.setDate(d.getDate() + offsetDays);
@@ -55,17 +70,19 @@ export async function bulkImportWeights(entries) {
   });
 }
 
-/** Everything in the database, for a downloadable backup. */
+/** Everything the user ever entered (logs, phases, settings), for a downloadable backup. */
 export async function exportData() {
-  return { app: 'ledger', version: 1, logs: await getAllLogs(), phases: await getAllPhases() };
+  const settings = Object.fromEntries((await db.settings.toArray()).map((r) => [r.key, r.value]));
+  return { app: 'ledger', version: 2, exportedAt: new Date().toISOString(), logs: await getAllLogs(), phases: await getAllPhases(), settings };
 }
 
-/** Merges a backup made by exportData(): fills values in, never deletes. Returns the log count. */
+/** Merges a backup made by exportData(): fills values in, never deletes logs or phases. Returns the log count. */
 export async function importBackup(data) {
   if (data?.app !== 'ledger' || !Array.isArray(data.logs)) throw new Error('Not a Ledger backup file.');
   const phases = Array.isArray(data.phases) ? data.phases : [];
-  await db.transaction('rw', db.logs, db.phases, async () => {
+  await db.transaction('rw', db.logs, db.phases, db.settings, async () => {
     for (const { date, morningWeightKg, caloriesConsumed } of data.logs) {
+      if (!DATE_RE.test(date)) continue;
       const fields = {};
       if (isValidWeight(morningWeightKg)) fields.morningWeightKg = morningWeightKg;
       if (isValidCalories(caloriesConsumed)) fields.caloriesConsumed = caloriesConsumed;
@@ -73,7 +90,12 @@ export async function importBackup(data) {
     }
     const have = new Set((await db.phases.toArray()).map((p) => p.name + p.startDate));
     for (const { name, startDate, endDate } of phases) {
+      if (typeof name !== 'string' || !DATE_RE.test(startDate) || (endDate && !DATE_RE.test(endDate))) continue;
       if (!have.has(name + startDate)) await db.phases.add({ name, startDate, endDate: endDate ?? null });
+    }
+    for (const key of SETTING_KEYS) {
+      const value = data.settings?.[key];
+      if (['string', 'number'].includes(typeof value) && (key !== 'theme' || value in THEMES)) await saveSetting(key, value);
     }
   });
   return data.logs.length;

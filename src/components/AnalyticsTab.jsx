@@ -17,8 +17,8 @@ function fmtDelta(delta) {
 }
 
 const tooltipStyle = {
-  background: '#18181b',
-  border: '1px solid #27272a',
+  background: 'var(--color-zinc-900)',
+  border: '1px solid var(--color-zinc-800)',
   borderRadius: 10,
   fontSize: 12,
   padding: '6px 10px',
@@ -68,10 +68,10 @@ export default function AnalyticsTab() {
               <div className="h-44 -ml-2">
                 <ResponsiveContainer width="100%" height="100%">
                   <LineChart data={rolling} margin={{ top: 4, right: 8, bottom: 0, left: 0 }}>
-                    <CartesianGrid stroke="#1c1c1f" vertical={false} />
-                    <XAxis dataKey="label" tick={{ fontSize: 10, fill: '#71717a' }} interval="preserveStartEnd" axisLine={{ stroke: '#27272a' }} tickLine={false} />
-                    <YAxis tick={{ fontSize: 10, fill: '#71717a' }} tickFormatter={(v) => v.toFixed(1)} domain={['dataMin - 1', 'dataMax + 1']} width={32} axisLine={false} tickLine={false} />
-                    <Tooltip contentStyle={tooltipStyle} labelStyle={{ color: '#e4e4e7' }} formatter={(v) => v.toFixed(1)} />
+                    <CartesianGrid stroke="var(--color-zinc-900)" vertical={false} />
+                    <XAxis dataKey="label" tick={{ fontSize: 10, fill: 'var(--color-zinc-500)' }} interval="preserveStartEnd" axisLine={{ stroke: 'var(--color-zinc-800)' }} tickLine={false} />
+                    <YAxis tick={{ fontSize: 10, fill: 'var(--color-zinc-500)' }} tickFormatter={(v) => v.toFixed(1)} domain={['dataMin - 1', 'dataMax + 1']} width={32} axisLine={false} tickLine={false} />
+                    <Tooltip contentStyle={tooltipStyle} labelStyle={{ color: 'var(--color-zinc-200)' }} formatter={(v) => v.toFixed(1)} />
                     <Line type="monotone" dataKey="raw" stroke={muted} strokeWidth={1.5} dot={false} isAnimationActive={false} />
                     <Line type="monotone" dataKey="avg" stroke={accentDim} strokeWidth={2.5} dot={false} isAnimationActive={false} />
                   </LineChart>
@@ -85,10 +85,10 @@ export default function AnalyticsTab() {
                 {weekly.length ? (
                   <ResponsiveContainer width="100%" height="100%">
                     <BarChart data={weekly} margin={{ top: 4, right: 8, bottom: 0, left: 0 }}>
-                      <CartesianGrid stroke="#1c1c1f" vertical={false} />
-                      <XAxis dataKey="label" tick={{ fontSize: 10, fill: '#71717a' }} axisLine={{ stroke: '#27272a' }} tickLine={false} />
-                      <YAxis tick={{ fontSize: 10, fill: '#71717a' }} tickFormatter={(v) => v.toFixed(1)} domain={['dataMin - 1', 'dataMax + 1']} width={32} axisLine={false} tickLine={false} />
-                      <Tooltip contentStyle={tooltipStyle} labelStyle={{ color: '#e4e4e7' }} formatter={(v) => v.toFixed(1)} />
+                      <CartesianGrid stroke="var(--color-zinc-900)" vertical={false} />
+                      <XAxis dataKey="label" tick={{ fontSize: 10, fill: 'var(--color-zinc-500)' }} axisLine={{ stroke: 'var(--color-zinc-800)' }} tickLine={false} />
+                      <YAxis tick={{ fontSize: 10, fill: 'var(--color-zinc-500)' }} tickFormatter={(v) => v.toFixed(1)} domain={['dataMin - 1', 'dataMax + 1']} width={32} axisLine={false} tickLine={false} />
+                      <Tooltip contentStyle={tooltipStyle} labelStyle={{ color: 'var(--color-zinc-200)' }} formatter={(v) => v.toFixed(1)} />
                       <Bar dataKey="avgWeight" fill={accentDim} radius={[4, 4, 0, 0]} isAnimationActive={false} />
                     </BarChart>
                   </ResponsiveContainer>
@@ -102,7 +102,7 @@ export default function AnalyticsTab() {
               <h2 className={sectionTitle + ' mb-2'}>Week-over-Week</h2>
               {weekly.length ? (
                 <div className="rounded-xl border border-zinc-800/80 divide-y divide-zinc-800/80 overflow-hidden">
-                  <div className="flex px-3 py-2 bg-black/20">
+                  <div className="flex px-3 py-2 bg-zinc-950/20">
                     <span className={label + ' flex-1'}>Week</span>
                     <span className={label + ' w-16 text-right'}>Avg</span>
                     <span className={label + ' w-20 text-right'}>Change</span>

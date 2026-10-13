@@ -1,3 +1,5 @@
+import { Settings } from 'lucide-react';
+
 export default function Header({ title }) {
   return (
     <div className="flex items-center justify-between px-4 pt-5 pb-1 shrink-0">
@@ -7,7 +9,12 @@ export default function Header({ title }) {
         </div>
         <span className="text-[13px] font-semibold text-zinc-500 tracking-wide">Ledger</span>
       </div>
-      <h1 className="text-[13px] font-semibold text-zinc-300">{title}</h1>
+      <div className="flex items-center gap-3">
+        <h1 className="text-[13px] font-semibold text-zinc-300">{title}</h1>
+        <a href="#settings" aria-label="Settings" className="text-zinc-500 active:text-emerald-400">
+          <Settings size={18} />
+        </a>
+      </div>
     </div>
   );
 }

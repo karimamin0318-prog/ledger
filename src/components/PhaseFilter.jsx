@@ -9,7 +9,7 @@ export default function PhaseFilter({ phases, value, onChange }) {
       <select
         value={value}
         onChange={(e) => onChange(e.target.value)}
-        className="appearance-none bg-black/40 border border-zinc-800 rounded-lg pl-3 pr-8 py-1.5 text-xs text-zinc-300 focus:outline-none focus:border-emerald-500/50"
+        className="appearance-none bg-zinc-950/40 border border-zinc-800 rounded-lg pl-3 pr-8 py-1.5 text-xs text-zinc-300 focus:outline-none focus:border-emerald-500/50"
       >
         <option value="all">All Time</option>
         {phases.map((p) => (

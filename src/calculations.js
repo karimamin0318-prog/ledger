@@ -46,7 +46,7 @@ export function groupByWeek(logs) {
 }
 
 /** Least-squares slope (kg/day) through the raw weights, so one noisy day can't swing the result. */
-function trendSlope(points) {
+export function trendSlope(points) {
   const x = points.map((p) => daysBetween(points[0].date, p.date));
   const n = x.length;
   const mx = x.reduce((s, v) => s + v, 0) / n;
@@ -123,4 +123,40 @@ export function goalTargetCalories(tdee, currentWeightKg, goalKey) {
   if (goal?.rateOfWeightPerWeek == null) return tdee;
   const dailyAdjustment = (currentWeightKg * goal.rateOfWeightPerWeek * KCAL_PER_KG) / 7;
   return tdee + dailyAdjustment;
+}
+
+/**
+ * Formula estimate of maintenance for when there is not enough data for a measured TDEE.
+ * BMR: Mifflin-St Jeor (1990), the most accurate common equation. Baseline x1.2 (sedentary)
+ * covers daily living; walking above ~3000 steps adds about 0.5 kcal per kg per 1000 steps.
+ * shortcut: steps are a rough yearly average and add no exercise on top, upgrade if workouts need logging.
+ */
+export function estimateTDEE({ sex, age, heightCm, weightKg, steps }) {
+  const [a, h, w, st] = [age, heightCm, weightKg, steps].map(Number);
+  if (!(a >= 10 && a <= 100 && h >= 100 && h <= 230 && w >= 20 && w <= 400 && st >= 0 && st <= 50000)) return null;
+  if (steps === '' || steps == null) return null;
+  const bmr = 10 * w + 6.25 * h - 5 * a + (sex === 'f' ? -161 : 5);
+  return bmr * 1.2 + Math.max(0, st - 3000) * w * 0.0005;
+}
+
+/** Numbers for one phase. `today` closes an open phase. */
+export function phaseSummary(logs, phase, today) {
+  const scoped = logsInPhase(logs, phase);
+  const end = phase.endDate || today;
+  const days = Math.max(1, daysBetween(phase.startDate, end) + 1);
+  const rolling = rollingAverage(scoped);
+  const cals = scoped.filter((l) => l.caloriesConsumed != null).map((l) => l.caloriesConsumed);
+  return {
+    end,
+    days,
+    weeks: days / 7,
+    weighIns: rolling.length,
+    startWeight: rolling[0]?.raw ?? null,
+    endWeight: rolling.at(-1)?.raw ?? null,
+    change: rolling.length > 1 ? rolling.at(-1).raw - rolling[0].raw : null,
+    perWeek: rolling.length > 1 ? trendSlope(rolling) * 7 : null,
+    avgWeight: rolling.length ? rolling.reduce((s, r) => s + r.raw, 0) / rolling.length : null,
+    avgCalories: cals.length ? cals.reduce((s, v) => s + v, 0) / cals.length : null,
+    calorieDays: cals.length,
+  };
 }

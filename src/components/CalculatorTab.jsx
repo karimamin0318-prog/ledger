@@ -1,10 +1,11 @@
 import { useState } from 'react';
 import { useLiveQuery } from 'dexie-react-hooks';
-import { getAllLogs, getAllPhases } from '../db';
-import { computeAdaptiveTDEE, goalTargetCalories, GOALS, MIN_DAYS_FOR_TDEE, logsInPhase } from '../calculations';
+import { getAllLogs, getAllPhases, saveSetting } from '../db';
+import { useSettings } from '../useSettings';
+import { computeAdaptiveTDEE, estimateTDEE, rollingAverage, goalTargetCalories, GOALS, MIN_DAYS_FOR_TDEE, logsInPhase } from '../calculations';
 import Header from './Header';
 import PhaseFilter from './PhaseFilter';
-import { card, sectionTitle, label } from '../ui';
+import { card, input, sectionTitle, label } from '../ui';
 
 const GOAL_ORDER = Object.keys(GOALS);
 
@@ -17,6 +18,7 @@ export default function CalculatorTab() {
   const [selected, setSelected] = useState(null); // null = auto (current phase, or all time)
   const logs = useLiveQuery(() => getAllLogs(), [], []);
   const phases = useLiveQuery(() => getAllPhases(), [], []);
+  const settings = useSettings();
 
   if (!logs || !phases) return null;
 
@@ -26,6 +28,16 @@ export default function CalculatorTab() {
   const scopedLogs = logsInPhase(logs, selectedPhase);
 
   const result = computeAdaptiveTDEE(scopedLogs);
+  const estimate = estimateTDEE({
+    sex: settings.sex,
+    age: settings.age,
+    heightCm: settings.height,
+    weightKg: rollingAverage(logs).at(-1)?.avg,
+    steps: settings.steps,
+  });
+  // A measured TDEE already contains your steps, so the formula only fills in until it is ready.
+  const tdee = result.ready ? result.tdee : estimate;
+  const weightForGoal = result.currentWeight ?? rollingAverage(logs).at(-1)?.avg;
 
   function pickGoal(key) {
     if (key === 'gain_fast') {
@@ -82,6 +94,34 @@ export default function CalculatorTab() {
         </div>
 
         <div className={card + ' flex flex-col gap-3'}>
+          <span className={sectionTitle}>Activity estimate</span>
+          <p className="text-[12px] text-zinc-500 leading-relaxed">
+            Your average daily steps over the past year, roughly. Used until {MIN_DAYS_FOR_TDEE} days of data give a measured TDEE.
+          </p>
+          <div className="grid grid-cols-2 gap-2">
+            <Field label="Avg steps / day" value={settings.steps} onSave={(v) => saveSetting('steps', v)} placeholder="e.g. 8000" />
+            <Field label="Height (cm)" value={settings.height} onSave={(v) => saveSetting('height', v)} placeholder="e.g. 180" />
+            <Field label="Age" value={settings.age} onSave={(v) => saveSetting('age', v)} placeholder="e.g. 25" />
+            <div className="flex flex-col gap-1">
+              <span className="text-[10px] text-zinc-500 uppercase tracking-wide">Sex</span>
+              <select
+                value={settings.sex}
+                onChange={(e) => saveSetting('sex', e.target.value)}
+                className={input + ' !py-2.5 text-[15px]'}
+              >
+                <option value="m">Male</option>
+                <option value="f">Female</option>
+              </select>
+            </div>
+          </div>
+          <span className="text-zinc-400 text-sm">
+            {estimate != null
+              ? `Formula estimate: ${Math.round(estimate).toLocaleString()} kcal / day`
+              : 'Fill in all four and log a weight to see an estimate.'}
+          </span>
+        </div>
+
+        <div className={card + ' flex flex-col gap-3'}>
           <span className={sectionTitle}>Goal</span>
           <div className="grid grid-cols-3 gap-2">
             {GOAL_ORDER.map((key) => (
@@ -91,7 +131,7 @@ export default function CalculatorTab() {
                 className={`py-2.5 rounded-xl text-xs font-medium border transition-all duration-150 active:scale-[0.96] ${
                   goal === key
                     ? 'bg-emerald-500 text-black border-emerald-500'
-                    : 'bg-black/30 text-zinc-400 border-zinc-800'
+                    : 'bg-zinc-950/30 text-zinc-400 border-zinc-800'
                 }`}
               >
                 {GOALS[key].label}
@@ -103,10 +143,12 @@ export default function CalculatorTab() {
         <div className={card + ' flex flex-col items-center gap-1 py-6'}>
           <span className={label}>{GOALS[goal].label} Target</span>
           <span className="text-4xl font-bold text-emerald-400 tabular-nums mt-1">
-            {result.ready ? Math.round(goalTargetCalories(result.tdee, result.currentWeight, goal)).toLocaleString() : '—'}
+            {tdee != null ? Math.round(goalTargetCalories(tdee, weightForGoal, goal)).toLocaleString() : '—'}
           </span>
           <span className="text-zinc-500 text-xs mt-1">
-            {result.ready ? 'kcal / day' : `Needs your TDEE (${MIN_DAYS_FOR_TDEE}+ days of data) first`}
+            {tdee == null
+              ? `Needs your TDEE (${MIN_DAYS_FOR_TDEE}+ days of data) or the activity estimate below`
+              : result.ready ? 'kcal / day' : 'kcal / day · from the activity estimate'}
           </span>
         </div>
       </div>
@@ -122,5 +164,22 @@ function Stat({ label: text, value, unit }) {
         {value} <span className="text-[10px] text-zinc-500 font-normal">{unit}</span>
       </span>
     </div>
+  );
+}
+
+function Field({ label: text, value, onSave, placeholder }) {
+  return (
+    <label className="flex flex-col gap-1">
+      <span className="text-[10px] text-zinc-500 uppercase tracking-wide">{text}</span>
+      <input
+        key={value}
+        type="number"
+        inputMode="numeric"
+        defaultValue={value}
+        placeholder={placeholder}
+        onBlur={(e) => onSave(e.target.value)}
+        className={input + ' !py-2.5 text-[15px] w-full min-w-0'}
+      />
+    </label>
   );
 }

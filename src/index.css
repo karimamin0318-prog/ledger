@@ -4,9 +4,26 @@
   color-scheme: dark;
 }
 
+/* Themes re-map Tailwind's colour variables; components stay theme-agnostic. */
+:root[data-theme='light'] {
+  color-scheme: light;
+  --color-zinc-950: #fafafa; --color-zinc-900: #f4f4f5; --color-zinc-800: #e4e4e7; --color-zinc-700: #d4d4d8;
+  --color-zinc-600: #a1a1aa; --color-zinc-500: #71717a; --color-zinc-400: #52525b; --color-zinc-300: #3f3f46;
+  --color-zinc-200: #27272a; --color-zinc-100: #18181b; --color-white: #09090b;
+  --color-emerald-400: #059669; --color-emerald-500: #10b981;
+  --color-amber-400: #d97706; --color-red-400: #dc2626;
+}
+:root[data-theme='light'] input[type='date'] { color-scheme: light; }
+:root[data-theme='midnight'] {
+  --color-zinc-950: #0a0a14; --color-zinc-900: #11111d; --color-zinc-800: #1d1d2e; --color-zinc-700: #2c2c42;
+  --color-zinc-600: #4a4a66; --color-zinc-500: #7c7c9c; --color-zinc-400: #a0a0bd; --color-zinc-300: #c4c4d8;
+  --color-zinc-200: #dcdcea; --color-zinc-100: #ececf5;
+  --color-emerald-400: #c4b5fd; --color-emerald-500: #a78bfa;
+}
+
 html, body, #root {
-  background: #000;
-  color: #e4e4e7;
+  background: var(--color-zinc-950);
+  color: var(--color-zinc-200);
   margin: 0;
   min-height: 100svh;
   font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
