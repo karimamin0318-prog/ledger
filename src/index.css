@@ -55,8 +55,7 @@
   --bloom: #e9a9bc;
 }
 
-.sakura { --ink: var(--color-zinc-100); --paper: var(--color-zinc-950); transition: opacity 0.4s; }
-.sakura[data-quiet] { opacity: 0.35; } /* behind charts the tree steps back */
+.sakura { --ink: var(--color-zinc-100); --paper: var(--color-zinc-950); opacity: 0.35; } /* dimmed so it stays behind the numbers */
 .sakura svg { width: 100%; transform: scaleX(-1); } /* the drawing grows from the right; mirrored it enters from the left */
 .st-wood, .st-stem { stroke: var(--ink); }
 .st-stem { stroke-width: 0.5; }

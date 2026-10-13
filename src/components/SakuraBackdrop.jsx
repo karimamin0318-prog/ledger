@@ -11,7 +11,7 @@ const PETALS = [
 ];
 
 // Behind everything and never tappable; the petals stop while the app is in the background.
-export default function SakuraBackdrop({ quiet }) {
+export default function SakuraBackdrop() {
   const [hidden, setHidden] = useState(document.hidden);
   useEffect(() => {
     const onVis = () => setHidden(document.hidden);
@@ -22,7 +22,6 @@ export default function SakuraBackdrop({ quiet }) {
   return (
     <div
       className="sakura absolute inset-0 -z-10 overflow-hidden pointer-events-none"
-      data-quiet={quiet || undefined}
       data-paused={hidden || undefined}
       aria-hidden="true"
     >

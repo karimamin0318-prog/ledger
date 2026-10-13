@@ -33,7 +33,7 @@ export default function App() {
 
   return (
     <div className="relative isolate flex flex-col h-[100svh] bg-zinc-950 text-zinc-100">
-      {loaded && theme.startsWith('sakura') && <SakuraBackdrop quiet={!inSettings && tab !== 'log'} />}
+      {loaded && theme.startsWith('sakura') && <SakuraBackdrop />}
       {loaded && <BackupReminder lastBackup={lastBackup} />}
       {inSettings ? (
         <SettingsTab />
