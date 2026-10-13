@@ -17,7 +17,7 @@ Open https://karimamin0318-prog.github.io/ledger/ and choose "Install" / "Add to
 
 ## Settings (gear, top right)
 
-Design (Dark / Light / Midnight), all past phases with a detail view, backup export/restore (weights, calories, phases and settings in one JSON file; restoring only fills in; a reminder pops up after 14 days without a backup), and bulk weight import.
+Design (Dark / Light / Midnight / Sakura / Sakura Night, the last two with an ink cherry branch and a few slowly falling petals that stop when the app is in the background or reduced motion is on), all past phases with a detail view, backup export/restore (weights, calories, phases and settings in one JSON file; restoring only fills in; a reminder pops up after 14 days without a backup), and bulk weight import.
 
 ## Maintenance calculation
 

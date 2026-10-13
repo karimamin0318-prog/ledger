@@ -2,6 +2,12 @@
 
 :root {
   color-scheme: dark;
+  --card-radius: 1rem;
+  --field-radius: 0.75rem;
+  --card-shadow: inset 0 1px 0 0 rgba(255, 255, 255, 0.03);
+  --card-alpha: 60%;
+  --card-filter: none;
+  --btn-shadow: 0 4px 16px -4px rgba(16, 185, 129, 0.5);
 }
 
 /* Themes re-map Tailwind's colour variables; components stay theme-agnostic. */
@@ -19,6 +25,61 @@
   --color-zinc-600: #4a4a66; --color-zinc-500: #7c7c9c; --color-zinc-400: #a0a0bd; --color-zinc-300: #c4c4d8;
   --color-zinc-200: #dcdcea; --color-zinc-100: #ececf5;
   --color-emerald-400: #c4b5fd; --color-emerald-500: #a78bfa;
+}
+
+/* Sakura: ink cherry branch behind milky acetate cards. Ink is the accent; pink lives only in the blossoms. */
+:root[data-theme^='sakura'] {
+  --card-radius: 6px;
+  --field-radius: 4px;
+  --card-alpha: 80%;
+  --card-filter: blur(2px);
+  --btn-shadow: none;
+}
+:root[data-theme='sakura'] {
+  color-scheme: light;
+  --color-zinc-950: #f2f1ee; --color-zinc-900: #faf9f6; --color-zinc-800: #dcd9d2; --color-zinc-700: #c9c5bd;
+  --color-zinc-600: #7d7973; --color-zinc-500: #6b6862; --color-zinc-400: #4f4c47; --color-zinc-300: #3a3834;
+  --color-zinc-200: #26251f; --color-zinc-100: #1d1d1f; --color-white: #1d1d1f; --color-black: #f2f1ee;
+  --color-emerald-400: #1d1d1f; --color-emerald-500: #1d1d1f;
+  --color-amber-400: #b45309; --color-red-400: #dc2626;
+  --card-shadow: 3px 3px 0 rgba(29, 29, 31, 0.85);
+  --bloom: #f3c6d3;
+}
+:root[data-theme='sakura'] input[type='date'] { color-scheme: light; }
+:root[data-theme='sakura-night'] {
+  --color-zinc-950: #0e0e10; --color-zinc-900: #18181b; --color-zinc-800: #2c2c30; --color-zinc-700: #3a3a3f;
+  --color-zinc-600: #6e6c69; --color-zinc-500: #8d8b87; --color-zinc-400: #b0aeaa; --color-zinc-300: #cfcdc9;
+  --color-zinc-200: #e2e0dc; --color-zinc-100: #ecebe8; --color-white: #f5f4f1; --color-black: #0e0e10;
+  --color-emerald-400: #ecebe8; --color-emerald-500: #ecebe8;
+  --card-shadow: 3px 3px 0 rgba(236, 235, 232, 0.55);
+  --bloom: #e9a9bc;
+}
+
+.sakura { --ink: var(--color-zinc-100); --paper: var(--color-zinc-950); transition: opacity 0.4s; }
+.sakura[data-quiet] { opacity: 0.35; } /* behind charts the tree steps back */
+.sakura svg { width: 100%; transform: scaleX(-1); } /* the drawing grows from the right; mirrored it enters from the left */
+.st-wood, .st-stem { stroke: var(--ink); }
+.st-stem { stroke-width: 0.5; }
+.st-grain { stroke: var(--paper); stroke-width: 0.6; opacity: 0.45; }
+.st-bud { fill: var(--ink); }
+.st-fl { fill: var(--paper); stroke: var(--ink); stroke-width: 0.75; }
+.st-fl use:nth-child(3n) { fill: var(--bloom); }
+.st-stamen { stroke-width: 0.5; fill: var(--ink); }
+.petal {
+  position: absolute; top: -12px; width: 9px; height: 7px;
+  background: var(--bloom); border-radius: 70% 0 70% 0;
+  opacity: 0; animation: fall linear infinite;
+}
+.sakura[data-paused] .petal { animation-play-state: paused; }
+@keyframes fall {
+  0% { transform: translate(0, 0) rotate(0); opacity: 0; }
+  8% { opacity: 0.9; }
+  50% { transform: translate(-40px, 50svh) rotate(220deg); }
+  92% { opacity: 0.8; }
+  100% { transform: translate(10px, 102svh) rotate(480deg); opacity: 0; }
+}
+@media (prefers-reduced-motion: reduce) {
+  .petal { animation: none; opacity: 0.85; transform: translateY(var(--rest)) rotate(35deg); }
 }
 
 html, body, #root {

@@ -5,6 +5,7 @@ import AnalyticsTab from './components/AnalyticsTab';
 import CalculatorTab from './components/CalculatorTab';
 import SettingsTab from './components/SettingsTab';
 import BackupReminder from './components/BackupReminder';
+import SakuraBackdrop from './components/SakuraBackdrop';
 import { useSettings } from './hooks';
 
 // Settings lives at #settings, so the phone's back button closes it.
@@ -14,7 +15,7 @@ const subscribeHash = (cb) => {
 };
 
 // Status-bar colour per theme.
-const BAR = { dark: '#09090b', light: '#fafafa', midnight: '#0a0a14' };
+const BAR = { dark: '#09090b', light: '#fafafa', midnight: '#0a0a14', sakura: '#f2f1ee', 'sakura-night': '#0e0e10' };
 function applyTheme(theme) {
   document.documentElement.dataset.theme = theme;
   document.querySelector('meta[name=theme-color]')?.setAttribute('content', BAR[theme] ?? BAR.dark);
@@ -31,7 +32,8 @@ export default function App() {
   }, [theme, loaded]);
 
   return (
-    <div className="flex flex-col h-[100svh] bg-zinc-950 text-zinc-100">
+    <div className="relative isolate flex flex-col h-[100svh] bg-zinc-950 text-zinc-100">
+      {loaded && theme.startsWith('sakura') && <SakuraBackdrop quiet={!inSettings && tab !== 'log'} />}
       {loaded && <BackupReminder lastBackup={lastBackup} />}
       {inSettings ? (
         <SettingsTab />

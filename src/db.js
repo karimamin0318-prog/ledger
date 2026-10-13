@@ -14,7 +14,7 @@ db.version(3).stores({
   settings: 'key',
 });
 
-export const THEMES = { dark: 'Dark', light: 'Light', midnight: 'Midnight' };
+export const THEMES = { dark: 'Dark', light: 'Light', midnight: 'Midnight', sakura: 'Sakura', 'sakura-night': 'Sakura Night' };
 const DATE_RE = /^\d{4}-\d{2}-\d{2}$/;
 const SETTING_KEYS = ['theme', 'steps', 'sex', 'age', 'height', 'lastBackup'];
 
