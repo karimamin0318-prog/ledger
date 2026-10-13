@@ -11,7 +11,11 @@ const httpsConfig = fs.existsSync('./cert.pem')
   ? { cert: fs.readFileSync('./cert.pem'), key: fs.readFileSync('./key.pem') }
   : undefined
 
+// GitHub Pages serves the app from /ledger/; locally it stays at /.
+const base = process.env.GITHUB_PAGES ? '/ledger/' : '/'
+
 export default defineConfig({
+  base,
   plugins: [
     react(),
     tailwindcss(),
@@ -32,8 +36,8 @@ export default defineConfig({
         background_color: '#0a0a0a',
         display: 'standalone',
         orientation: 'portrait',
-        start_url: '/',
-        scope: '/',
+        start_url: base,
+        scope: base,
         icons: [
           { src: 'icon-192.png', sizes: '192x192', type: 'image/png', purpose: 'any' },
           { src: 'icon-maskable-192.png', sizes: '192x192', type: 'image/png', purpose: 'maskable' },
