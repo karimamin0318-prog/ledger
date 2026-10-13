@@ -1,11 +1,5 @@
-import { useState } from 'react';
-import { useLiveQuery } from 'dexie-react-hooks';
-import {
-  ResponsiveContainer, LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip,
-  BarChart, Bar,
-} from 'recharts';
-import { getAllLogs, getAllPhases } from '../db';
-import { rollingAverage, groupByWeek, logsInPhase } from '../calculations';
+import { rollingAverage, groupByWeek } from '../calculations';
+import { usePhaseScope } from '../hooks';
 import Header from './Header';
 import PhaseFilter from './PhaseFilter';
 import { card, sectionTitle, label, accentDim, muted } from '../ui';
@@ -16,30 +10,15 @@ function fmtDelta(delta) {
   return `${sign}${delta.toFixed(1)} kg`;
 }
 
-const tooltipStyle = {
-  background: 'var(--color-zinc-900)',
-  border: '1px solid var(--color-zinc-800)',
-  borderRadius: 10,
-  fontSize: 12,
-  padding: '6px 10px',
-};
-
 export default function AnalyticsTab() {
-  const logs = useLiveQuery(() => getAllLogs(), [], []);
-  const phases = useLiveQuery(() => getAllPhases(), [], []);
-  const [selected, setSelected] = useState(null); // null = auto (current phase, or all time)
+  const { phases, phaseId, setPhaseId, scopedLogs } = usePhaseScope();
 
-  if (!logs || !phases) return null;
-
-  const activePhase = phases.find((p) => !p.endDate) || null;
-  const effectiveId = selected ?? (activePhase ? String(activePhase.id) : 'all');
-  const selectedPhase = effectiveId === 'all' ? null : phases.find((p) => String(p.id) === effectiveId) || null;
-  const scopedLogs = logsInPhase(logs, selectedPhase);
-
-  const rolling = rollingAverage(scopedLogs).map((r) => ({ ...r, label: fmtShort(r.date) }));
+  const rolling = rollingAverage(scopedLogs);
   const weekly = groupByWeek(scopedLogs)
     .filter((w) => w.avgWeight != null)
     .map((w) => ({ ...w, label: fmtShort(w.weekStart) }));
+  const latest = rolling.at(-1);
+  const xs = rolling.map((r) => daysBetween(rolling[0].date, r.date));
 
   const hasData = rolling.length > 0;
 
@@ -49,7 +28,7 @@ export default function AnalyticsTab() {
 
       <div className="flex flex-col gap-4 px-4 pt-3 pb-4">
         <div className="flex justify-end -mt-1">
-          <PhaseFilter phases={phases} value={effectiveId} onChange={setSelected} />
+          <PhaseFilter phases={phases} value={phaseId} onChange={setPhaseId} />
         </div>
 
         {!hasData && (
@@ -65,37 +44,26 @@ export default function AnalyticsTab() {
                 <h2 className={sectionTitle}>Daily Weight</h2>
                 <Legend items={[[muted, 'Daily'], [accentDim, '7-day avg']]} />
               </div>
-              <div className="h-44 -ml-2">
-                <ResponsiveContainer width="100%" height="100%">
-                  <LineChart data={rolling} margin={{ top: 4, right: 8, bottom: 0, left: 0 }}>
-                    <CartesianGrid stroke="var(--color-zinc-900)" vertical={false} />
-                    <XAxis dataKey="label" tick={{ fontSize: 10, fill: 'var(--color-zinc-500)' }} interval="preserveStartEnd" axisLine={{ stroke: 'var(--color-zinc-800)' }} tickLine={false} />
-                    <YAxis tick={{ fontSize: 10, fill: 'var(--color-zinc-500)' }} tickFormatter={(v) => v.toFixed(1)} domain={['dataMin - 1', 'dataMax + 1']} width={32} axisLine={false} tickLine={false} />
-                    <Tooltip contentStyle={tooltipStyle} labelStyle={{ color: 'var(--color-zinc-200)' }} formatter={(v) => v.toFixed(1)} />
-                    <Line type="monotone" dataKey="raw" stroke={muted} strokeWidth={1.5} dot={false} isAnimationActive={false} />
-                    <Line type="monotone" dataKey="avg" stroke={accentDim} strokeWidth={2.5} dot={false} isAnimationActive={false} />
-                  </LineChart>
-                </ResponsiveContainer>
-              </div>
+              <Plot
+                xs={xs}
+                lines={[
+                  { values: rolling.map((r) => r.raw), color: muted, width: 1.5 },
+                  { values: rolling.map((r) => r.avg), color: accentDim, width: 2.5 },
+                ]}
+                xLabels={[fmtShort(rolling[0].date), fmtShort(latest.date)]}
+              />
+              <span className="text-zinc-500 text-xs">
+                Latest {latest.raw.toFixed(1)} kg · 7-day avg {latest.avg.toFixed(1)} kg
+              </span>
             </section>
 
             <section className={card + ' flex flex-col gap-3'}>
               <h2 className={sectionTitle}>Weekly Average</h2>
-              <div className="h-40 -ml-2">
-                {weekly.length ? (
-                  <ResponsiveContainer width="100%" height="100%">
-                    <BarChart data={weekly} margin={{ top: 4, right: 8, bottom: 0, left: 0 }}>
-                      <CartesianGrid stroke="var(--color-zinc-900)" vertical={false} />
-                      <XAxis dataKey="label" tick={{ fontSize: 10, fill: 'var(--color-zinc-500)' }} axisLine={{ stroke: 'var(--color-zinc-800)' }} tickLine={false} />
-                      <YAxis tick={{ fontSize: 10, fill: 'var(--color-zinc-500)' }} tickFormatter={(v) => v.toFixed(1)} domain={['dataMin - 1', 'dataMax + 1']} width={32} axisLine={false} tickLine={false} />
-                      <Tooltip contentStyle={tooltipStyle} labelStyle={{ color: 'var(--color-zinc-200)' }} formatter={(v) => v.toFixed(1)} />
-                      <Bar dataKey="avgWeight" fill={accentDim} radius={[4, 4, 0, 0]} isAnimationActive={false} />
-                    </BarChart>
-                  </ResponsiveContainer>
-                ) : (
-                  <p className="text-zinc-600 text-xs text-center py-8">Not enough data yet.</p>
-                )}
-              </div>
+              {weekly.length > 1 ? (
+                <Plot bars={weekly.map((w) => w.avgWeight)} xLabels={[weekly[0].label, weekly.at(-1).label]} />
+              ) : (
+                <p className="text-zinc-600 text-xs text-center py-8">Not enough data yet.</p>
+              )}
             </section>
 
             <section className={card + ' flex flex-col gap-1'}>
@@ -150,6 +118,52 @@ function Legend({ items }) {
           {text}
         </span>
       ))}
+    </div>
+  );
+}
+
+/** Tiny SVG chart: lines over day offsets `xs`, or one bar per value. Y axis fits the data ±0.5 kg. */
+function Plot({ xs, lines, bars, xLabels }) {
+  const all = bars ?? lines.flatMap((l) => l.values);
+  const lo = Math.floor(Math.min(...all) - 0.5);
+  const hi = Math.ceil(Math.max(...all) + 0.5);
+  const y = (v) => 100 - ((v - lo) / (hi - lo)) * 100;
+  const span = xs ? Math.max(1, xs.at(-1)) : 1;
+  const x = (d) => (d / span) * 100;
+  const grid = [lo, (lo + hi) / 2, hi];
+
+  return (
+    <div className="flex gap-2">
+      <div className="flex flex-col justify-between text-[10px] text-zinc-500 tabular-nums h-40 py-0 -my-1.5">
+        {[...grid].reverse().map((g) => <span key={g}>{g.toFixed(1)}</span>)}
+      </div>
+      <div className="flex-1 flex flex-col gap-1 min-w-0">
+        <svg viewBox="0 0 100 100" preserveAspectRatio="none" className="h-40 w-full overflow-visible">
+          {grid.map((g) => (
+            <line key={g} x1="0" x2="100" y1={y(g)} y2={y(g)} stroke="var(--color-zinc-800)" strokeWidth="1" vectorEffect="non-scaling-stroke" />
+          ))}
+          {lines?.map(({ values, color, width }) => (
+            <polyline
+              key={color}
+              // A single point gets a tiny segment so it stays visible.
+              points={values.length === 1 ? `49,${y(values[0])} 51,${y(values[0])}` : values.map((v, i) => `${x(xs[i])},${y(v)}`).join(' ')}
+              fill="none"
+              stroke={color}
+              strokeWidth={width}
+              strokeLinejoin="round"
+              strokeLinecap="round"
+              vectorEffect="non-scaling-stroke"
+            />
+          ))}
+          {bars?.map((v, i) => {
+            const w = 100 / bars.length;
+            return <rect key={i} x={i * w + w * 0.15} width={w * 0.7} y={y(v)} height={100 - y(v)} fill={accentDim} rx="0.6" />;
+          })}
+        </svg>
+        <div className="flex justify-between text-[10px] text-zinc-500">
+          {xLabels.map((l, i) => <span key={i}>{l}</span>)}
+        </div>
+      </div>
     </div>
   );
 }

@@ -3,6 +3,7 @@ import { useLiveQuery } from 'dexie-react-hooks';
 import { ChevronRight, ArrowLeft, Trash2 } from 'lucide-react';
 import { getAllLogs, getAllPhases, deletePhase, todayStr } from '../db';
 import { phaseSummary } from '../calculations';
+import { daysBetween } from '../dates';
 import { card, label } from '../ui';
 
 const fmtDate = (s) => s.split('-').reverse().join('.');
@@ -67,7 +68,7 @@ export default function PhasesSection() {
       {phases.length === 0 && <p className="text-zinc-600 text-sm">No phases yet. Start one on the Log tab.</p>}
       <div className="divide-y divide-zinc-800/80">
         {[...phases].reverse().map((p) => {
-          const weeks = phaseSummary([], p, today).weeks;
+          const weeks = (daysBetween(p.startDate, p.endDate || today) + 1) / 7;
           return (
             <button key={p.id} onClick={() => setOpenId(p.id)} className="w-full flex items-center justify-between py-2.5 text-left">
               <div className="flex flex-col">

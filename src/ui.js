@@ -9,6 +9,5 @@ export const btnSecondary =
   'bg-zinc-900 border border-zinc-800 text-zinc-300 active:scale-[0.97] active:bg-zinc-800 rounded-xl transition-all duration-150';
 export const label = 'text-[11px] font-semibold text-zinc-500 uppercase tracking-wider';
 export const sectionTitle = 'text-[13px] font-semibold text-zinc-300';
-export const accent = 'var(--color-emerald-500)';
 export const accentDim = 'var(--color-emerald-400)';
 export const muted = 'var(--color-zinc-600)';

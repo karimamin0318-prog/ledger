@@ -1,8 +1,7 @@
 import { useState } from 'react';
-import { useLiveQuery } from 'dexie-react-hooks';
-import { getAllLogs, getAllPhases, saveSetting } from '../db';
-import { useSettings } from '../useSettings';
-import { computeAdaptiveTDEE, estimateTDEE, rollingAverage, goalTargetCalories, GOALS, MIN_DAYS_FOR_TDEE, logsInPhase } from '../calculations';
+import { saveSetting } from '../db';
+import { useSettings, usePhaseScope } from '../hooks';
+import { computeAdaptiveTDEE, estimateTDEE, rollingAverage, goalTargetCalories, GOALS, MIN_DAYS_FOR_TDEE } from '../calculations';
 import Header from './Header';
 import PhaseFilter from './PhaseFilter';
 import { card, input, sectionTitle, label } from '../ui';
@@ -15,29 +14,21 @@ function fmt1(n) {
 
 export default function CalculatorTab() {
   const [goal, setGoal] = useState('maintain');
-  const [selected, setSelected] = useState(null); // null = auto (current phase, or all time)
-  const logs = useLiveQuery(() => getAllLogs(), [], []);
-  const phases = useLiveQuery(() => getAllPhases(), [], []);
+  const { logs, phases, phaseId, setPhaseId, scopedLogs } = usePhaseScope();
   const settings = useSettings();
-
-  if (!logs || !phases) return null;
-
-  const activePhase = phases.find((p) => !p.endDate) || null;
-  const effectiveId = selected ?? (activePhase ? String(activePhase.id) : 'all');
-  const selectedPhase = effectiveId === 'all' ? null : phases.find((p) => String(p.id) === effectiveId) || null;
-  const scopedLogs = logsInPhase(logs, selectedPhase);
+  const latestWeight = rollingAverage(logs).at(-1)?.avg;
 
   const result = computeAdaptiveTDEE(scopedLogs);
   const estimate = estimateTDEE({
     sex: settings.sex,
     age: settings.age,
     heightCm: settings.height,
-    weightKg: rollingAverage(logs).at(-1)?.avg,
+    weightKg: latestWeight,
     steps: settings.steps,
   });
   // A measured TDEE already contains your steps, so the formula only fills in until it is ready.
   const tdee = result.ready ? result.tdee : estimate;
-  const weightForGoal = result.currentWeight ?? rollingAverage(logs).at(-1)?.avg;
+  const weightForGoal = result.currentWeight ?? latestWeight;
 
   function pickGoal(key) {
     if (key === 'gain_fast') {
@@ -56,7 +47,7 @@ export default function CalculatorTab() {
 
       <div className="flex flex-col gap-4 px-4 pt-3 pb-4">
         <div className="flex justify-end -mt-1">
-          <PhaseFilter phases={phases} value={effectiveId} onChange={setSelected} />
+          <PhaseFilter phases={phases} value={phaseId} onChange={setPhaseId} />
         </div>
 
         <div className={card + ' flex flex-col items-center gap-1 py-6'}>

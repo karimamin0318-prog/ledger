@@ -1,7 +1,7 @@
 import { useState } from 'react';
 import { useLiveQuery } from 'dexie-react-hooks';
 import { Check, X, Plus, Scale, Flame } from 'lucide-react';
-import { todayStr, getAllLogs, getAllPhases, upsertWeight, upsertCalories, deleteField } from '../db';
+import { todayStr, getAllLogs, getActivePhase, upsertWeight, upsertCalories, deleteField } from '../db';
 import { logsInPhase } from '../calculations';
 import { isValidWeight, isValidCalories } from '../importParser';
 import Header from './Header';
@@ -12,7 +12,11 @@ import { fmtShort } from '../dates';
 const FIELDS = [['morningWeightKg', 'kg'], ['caloriesConsumed', 'kcal']];
 
 export default function LogTab() {
-  const [weightDate, setWeightDate] = useState(todayStr());
+  // null = today / yesterday, worked out on every render so a PWA left open overnight doesn't keep yesterday's date.
+  const [weightDatePick, setWeightDate] = useState(null);
+  const [calorieDatePick, setCalorieDate] = useState(null);
+  const weightDate = weightDatePick ?? todayStr();
+  const calorieDate = calorieDatePick ?? todayStr(-1);
   const [weightInput, setWeightInput] = useState('');
   const [calorieInput, setCalorieInput] = useState('');
   const [editing, setEditing] = useState(null); // { date, field }
@@ -20,25 +24,24 @@ export default function LogTab() {
   const [showAll, setShowAll] = useState(false);
 
   const logs = useLiveQuery(() => getAllLogs(), [], []);
-  const phases = useLiveQuery(() => getAllPhases(), [], []);
-
-  const activePhase = (phases || []).find((p) => !p.endDate) || null;
-  const scoped = activePhase ? logsInPhase(logs || [], activePhase) : logs || [];
-  const sortedDesc = [...scoped].reverse();
+  const activePhase = useLiveQuery(() => getActivePhase(), [], null);
+  const sortedDesc = [...logsInPhase(logs, activePhase)].reverse();
   const visible = showAll ? sortedDesc : sortedDesc.slice(0, 7);
 
   async function submitWeight() {
     const v = parseFloat(weightInput);
-    if (!isValidWeight(v) || !weightDate) return;
+    if (!isValidWeight(v)) return;
     await upsertWeight(weightDate, v);
     setWeightInput('');
+    setWeightDate(null);
   }
 
   async function submitCalories() {
     const v = parseFloat(calorieInput);
     if (!isValidCalories(v)) return;
-    await upsertCalories(todayStr(-1), v);
+    await upsertCalories(calorieDate, v);
     setCalorieInput('');
+    setCalorieDate(null);
   }
 
   async function saveEdit() {
@@ -75,7 +78,7 @@ export default function LogTab() {
               type="date"
               value={weightDate}
               max={todayStr()}
-              onChange={(e) => setWeightDate(e.target.value)}
+              onChange={(e) => setWeightDate(e.target.value || null)}
               className={input + ' w-[142px] shrink-0 !px-2.5 text-[14px] py-2.5 [color-scheme:dark]'}
             />
             <input
@@ -99,9 +102,16 @@ export default function LogTab() {
         <div className={card + ' flex flex-col gap-3'}>
           <div className="flex items-center gap-2">
             <Flame size={15} className="text-emerald-400" />
-            <span className={label}>Yesterday's Calories</span>
+            <span className={label}>Calories</span>
           </div>
           <div className="flex gap-2">
+            <input
+              type="date"
+              value={calorieDate}
+              max={todayStr()}
+              onChange={(e) => setCalorieDate(e.target.value || null)}
+              className={input + ' w-[142px] shrink-0 !px-2.5 text-[14px] py-2.5 [color-scheme:dark]'}
+            />
             <input
               type="number"
               inputMode="numeric"
@@ -115,6 +125,9 @@ export default function LogTab() {
               Save
             </button>
           </div>
+          {calorieDate !== todayStr(-1) && (
+            <span className="text-[11px] text-amber-400/80">Logging for {fmtShort(calorieDate)}, not yesterday</span>
+          )}
         </div>
 
         <div className="flex flex-col gap-0.5">

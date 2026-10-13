@@ -3,31 +3,20 @@ import { toDateStr, addDays } from './dates';
 import { isValidWeight, isValidCalories } from './importParser';
 
 export const db = new Dexie('ledger');
-db.version(1).stores({
-  // date (YYYY-MM-DD) is the primary key. morningWeightKg / caloriesConsumed
-  // are set independently — a row can have either, both, or be created with
-  // just one and filled in later by a different day's submission.
-  logs: 'date',
-});
-db.version(2).stores({
-  logs: 'date',
-  // A phase is just a named date range (endDate: null while ongoing). Logs
-  // aren't tagged with a phase id — membership is derived purely from
-  // whether a log's date falls inside the phase's range, so importing or
-  // editing logs never needs to know about phases at all.
-  phases: '++id, startDate',
-});
-
+// Dexie only needs old versions that carry an upgrade function, so just the latest is declared.
 db.version(3).stores({
+  // date (YYYY-MM-DD) is the key; weight and calories are set independently.
   logs: 'date',
+  // A phase is a named date range (endDate null while ongoing). Logs aren't tagged:
+  // membership is derived from the date, so editing logs never touches phases.
   phases: '++id, startDate',
-  // key/value app settings: theme, steps, sex, age, height
+  // key/value app settings: theme, steps, sex, age, height, lastBackup
   settings: 'key',
 });
 
 export const THEMES = { dark: 'Dark', light: 'Light', midnight: 'Midnight' };
 const DATE_RE = /^\d{4}-\d{2}-\d{2}$/;
-const SETTING_KEYS = ['theme', 'steps', 'sex', 'age', 'height'];
+const SETTING_KEYS = ['theme', 'steps', 'sex', 'age', 'height', 'lastBackup'];
 
 export function saveSetting(key, value) {
   return db.settings.put({ key, value });
@@ -76,29 +65,35 @@ export async function exportData() {
   return { app: 'ledger', version: 2, exportedAt: new Date().toISOString(), logs: await getAllLogs(), phases: await getAllPhases(), settings };
 }
 
-/** Merges a backup made by exportData(): fills values in, never deletes logs or phases. Returns the log count. */
+/** Merges a backup made by exportData(): fills values in, never deletes. Returns how many logs and new phases were saved. */
 export async function importBackup(data) {
   if (data?.app !== 'ledger' || !Array.isArray(data.logs)) throw new Error('Not a Ledger backup file.');
   const phases = Array.isArray(data.phases) ? data.phases : [];
+  const saved = { logs: 0, phases: 0 };
   await db.transaction('rw', db.logs, db.phases, db.settings, async () => {
     for (const { date, morningWeightKg, caloriesConsumed } of data.logs) {
       if (!DATE_RE.test(date)) continue;
       const fields = {};
       if (isValidWeight(morningWeightKg)) fields.morningWeightKg = morningWeightKg;
       if (isValidCalories(caloriesConsumed)) fields.caloriesConsumed = caloriesConsumed;
+      if (!Object.keys(fields).length) continue;
       await mergeLog(date, fields);
+      saved.logs++;
     }
     const have = new Set((await db.phases.toArray()).map((p) => p.name + p.startDate));
     for (const { name, startDate, endDate } of phases) {
       if (typeof name !== 'string' || !DATE_RE.test(startDate) || (endDate && !DATE_RE.test(endDate))) continue;
-      if (!have.has(name + startDate)) await db.phases.add({ name, startDate, endDate: endDate ?? null });
+      if (have.has(name + startDate)) continue;
+      await db.phases.add({ name, startDate, endDate: endDate ?? null });
+      saved.phases++;
     }
     for (const key of SETTING_KEYS) {
       const value = data.settings?.[key];
       if (['string', 'number'].includes(typeof value) && (key !== 'theme' || value in THEMES)) await saveSetting(key, value);
     }
   });
-  return data.logs.length;
+  if (data.logs.length && !saved.logs) throw new Error('No valid entries found in this file.');
+  return saved;
 }
 
 export async function getAllPhases() {

@@ -39,6 +39,11 @@ html, body, #root {
   flex-direction: column;
 }
 
+@keyframes slidedown {
+  from { transform: translateY(-120%); }
+  to { transform: translateY(0); }
+}
+
 input[type="number"]::-webkit-inner-spin-button,
 input[type="number"]::-webkit-outer-spin-button {
   -webkit-appearance: none;

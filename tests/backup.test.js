@@ -11,16 +11,21 @@ it('restores logs, phases and settings from a backup, and survives a round trip'
       { date: 'garbage', morningWeightKg: 80, caloriesConsumed: null },
     ],
     phases: [{ name: 'Cut', startDate: '2026-08-24', endDate: null }],
-    settings: { theme: 'light', evil: 'x' },
+    settings: { theme: 'light', lastBackup: '2026-10-01', evil: 'x' },
   };
-  await importBackup(backup);
+  expect(await importBackup(backup)).toEqual({ logs: 2, phases: 1 });
   const out = await exportData();
   expect(out.logs.map((l) => l.date)).toEqual(['2026-08-24', '2026-09-09']);
   expect(out.logs[1].caloriesConsumed).toBe(1750);
   expect(out.phases).toMatchObject([{ name: 'Cut', startDate: '2026-08-24', endDate: null }]);
-  expect(out.settings).toEqual({ theme: 'light' });
+  expect(out.settings).toEqual({ theme: 'light', lastBackup: '2026-10-01' });
 
-  await importBackup(out); // restoring twice must not duplicate anything
+  expect(await importBackup(out)).toEqual({ logs: 2, phases: 0 }); // no duplicates
   expect(await db.logs.count()).toBe(2);
   expect(await db.phases.count()).toBe(1);
+});
+
+it('refuses a file where nothing is usable instead of claiming success', async () => {
+  await expect(importBackup({ app: 'ledger', logs: [{ date: 'x' }] })).rejects.toThrow('No valid entries');
+  await expect(importBackup({ foo: 1 })).rejects.toThrow('Not a Ledger backup');
 });

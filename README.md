@@ -8,20 +8,16 @@ A minimal, offline-first weight log for your phone. Log morning weight and calor
 npm install
 npm run dev      # development
 npm test         # unit tests
-npm run build && npm run preview   # production build with service worker
+npm run build && npm run preview   # production build
 ```
 
 ## Install on a phone
 
-Browsers only offer a real install over HTTPS. For a local setup:
-
-1. Create a trusted local certificate with [mkcert](https://github.com/FiloSottile/mkcert) and save it as `cert.pem` / `key.pem` in this folder (they are git-ignored; never commit them).
-2. Run `install-on-phone.bat` (build + preview), open `https://<laptop-ip>:4173` on the phone, and choose Install.
-3. After the first load the app is cached and works offline.
+Open https://karimamin0318-prog.github.io/ledger/ and choose "Install" / "Add to home screen". Every push to `main` redeploys it via GitHub Actions; the installed app updates the next time it is opened online.
 
 ## Settings (gear, top right)
 
-Design (Dark / Light / Midnight), all past phases with a detail view, backup export/restore (weights, calories, phases and settings in one JSON file; restoring only fills in), and bulk weight import.
+Design (Dark / Light / Midnight), all past phases with a detail view, backup export/restore (weights, calories, phases and settings in one JSON file; restoring only fills in; a reminder pops up after 14 days without a backup), and bulk weight import.
 
 ## Maintenance calculation
 
