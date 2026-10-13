@@ -39,6 +39,9 @@ html, body, #root {
   flex-direction: column;
 }
 
+/* Belt and braces: no focus ring on chart parts (it showed as a white box on tap). */
+.recharts-wrapper, .recharts-wrapper * { outline: none; }
+
 @keyframes slidedown {
   from { transform: translateY(-120%); }
   to { transform: translateY(0); }

@@ -70,7 +70,7 @@ export default function SettingsTab() {
               Restore
             </button>
           </div>
-          <input ref={fileRef} type="file" accept=".json,application/json" onChange={restore} className="hidden" />
+          <input ref={fileRef} type="file" accept=".txt,.json,text/plain,application/json" onChange={restore} className="hidden" />
           {msg && (
             <div className={`flex items-center gap-2 text-sm rounded-xl px-3 py-2 ${msg.ok ? 'text-emerald-400 bg-emerald-500/10' : 'text-red-400 bg-red-500/10'}`}>
               {msg.ok ? <CheckCircle2 size={15} /> : <AlertTriangle size={15} />}
