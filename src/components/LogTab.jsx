@@ -3,14 +3,13 @@ import { useLiveQuery } from 'dexie-react-hooks';
 import { Check, X, Plus, Scale, Flame } from 'lucide-react';
 import { todayStr, getAllLogs, getAllPhases, upsertWeight, upsertCalories, deleteField } from '../db';
 import { logsInPhase } from '../calculations';
+import { isValidWeight, isValidCalories } from '../importParser';
 import Header from './Header';
 import PhaseManager from './PhaseManager';
 import { card, input, btnPrimary, label } from '../ui';
+import { fmtShort } from '../dates';
 
-function fmtShort(dateStr) {
-  const [, m, d] = dateStr.split('-');
-  return `${d}.${m}`;
-}
+const FIELDS = [['morningWeightKg', 'kg'], ['caloriesConsumed', 'kcal']];
 
 export default function LogTab() {
   const [weightDate, setWeightDate] = useState(todayStr());
@@ -30,14 +29,14 @@ export default function LogTab() {
 
   async function submitWeight() {
     const v = parseFloat(weightInput);
-    if (isNaN(v) || v <= 0 || !weightDate) return;
+    if (!isValidWeight(v) || !weightDate) return;
     await upsertWeight(weightDate, v);
     setWeightInput('');
   }
 
   async function submitCalories() {
     const v = parseFloat(calorieInput);
-    if (isNaN(v) || v <= 0) return;
+    if (!isValidCalories(v)) return;
     await upsertCalories(todayStr(-1), v);
     setCalorieInput('');
   }
@@ -46,9 +45,8 @@ export default function LogTab() {
     if (!editing) return;
     const { date, field } = editing; // capture now — `editing` may point elsewhere by the time this resolves
     const v = parseFloat(editValue);
-    if (!isNaN(v) && v > 0) {
-      if (field === 'morningWeightKg') await upsertWeight(date, v);
-      else await upsertCalories(date, v);
+    if (field === 'morningWeightKg' ? isValidWeight(v) : isValidCalories(v)) {
+      await (field === 'morningWeightKg' ? upsertWeight : upsertCalories)(date, v);
     }
     // Only close the editor if it's still the same cell — otherwise this stale
     // save (e.g. triggered by blurring into a different row) would clobber
@@ -57,7 +55,7 @@ export default function LogTab() {
   }
 
   async function remove(date, field) {
-    await deleteField(date, field);
+    if (window.confirm('Delete this entry?')) await deleteField(date, field);
   }
 
   return (
@@ -130,42 +128,27 @@ export default function LogTab() {
             {visible.map((row) => (
               <div key={row.date} className="flex items-center gap-2 py-2.5 px-3.5 text-sm">
                 <span className="w-9 text-zinc-500 shrink-0 text-xs">{fmtShort(row.date)}</span>
-                <Cell
-                  value={row.morningWeightKg}
-                  unit="kg"
-                  editing={editing?.date === row.date && editing?.field === 'morningWeightKg'}
-                  editValue={editValue}
-                  setEditValue={setEditValue}
-                  onEdit={() => {
-                    setEditing({ date: row.date, field: 'morningWeightKg' });
-                    setEditValue(String(row.morningWeightKg));
-                  }}
-                  onAdd={() => {
-                    setEditing({ date: row.date, field: 'morningWeightKg' });
-                    setEditValue('');
-                  }}
-                  onSave={saveEdit}
-                  onCancel={() => setEditing(null)}
-                  onDelete={() => remove(row.date, 'morningWeightKg')}
-                />
-                <Cell
-                  value={row.caloriesConsumed}
-                  unit="kcal"
-                  editing={editing?.date === row.date && editing?.field === 'caloriesConsumed'}
-                  editValue={editValue}
-                  setEditValue={setEditValue}
-                  onEdit={() => {
-                    setEditing({ date: row.date, field: 'caloriesConsumed' });
-                    setEditValue(String(row.caloriesConsumed));
-                  }}
-                  onAdd={() => {
-                    setEditing({ date: row.date, field: 'caloriesConsumed' });
-                    setEditValue('');
-                  }}
-                  onSave={saveEdit}
-                  onCancel={() => setEditing(null)}
-                  onDelete={() => remove(row.date, 'caloriesConsumed')}
-                />
+                {FIELDS.map(([field, unit]) => (
+                  <Cell
+                    key={field}
+                    value={row[field]}
+                    unit={unit}
+                    editing={editing?.date === row.date && editing?.field === field}
+                    editValue={editValue}
+                    setEditValue={setEditValue}
+                    onEdit={() => {
+                      setEditing({ date: row.date, field });
+                      setEditValue(String(row[field]));
+                    }}
+                    onAdd={() => {
+                      setEditing({ date: row.date, field });
+                      setEditValue('');
+                    }}
+                    onSave={saveEdit}
+                    onCancel={() => setEditing(null)}
+                    onDelete={() => remove(row.date, field)}
+                  />
+                ))}
               </div>
             ))}
           </div>

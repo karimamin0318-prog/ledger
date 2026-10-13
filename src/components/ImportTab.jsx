@@ -1,11 +1,11 @@
 import { useRef, useState } from 'react';
-import { FileUp, CheckCircle2, AlertTriangle } from 'lucide-react';
-import { bulkImportWeights } from '../db';
+import { FileUp, Download, CheckCircle2, AlertTriangle } from 'lucide-react';
+import { bulkImportWeights, exportData, importBackup, todayStr } from '../db';
 import { parseImportText } from '../importParser';
 import Header from './Header';
 import { card, input, btnPrimary, btnSecondary, label } from '../ui';
 
-function fmtShort(dateStr) {
+function fmtFull(dateStr) {
   const [y, m, d] = dateStr.split('-');
   return `${d}.${m}.${y}`;
 }
@@ -14,6 +14,7 @@ export default function ImportTab() {
   const [text, setText] = useState('');
   const [parsed, setParsed] = useState(null); // { entries, failedLines }
   const [done, setDone] = useState(null); // count imported
+  const [error, setError] = useState('');
   const fileRef = useRef(null);
 
   function handlePreview(value) {
@@ -26,8 +27,25 @@ export default function ImportTab() {
     const file = e.target.files?.[0];
     if (!file) return;
     const reader = new FileReader();
-    reader.onload = () => handlePreview(String(reader.result || ''));
+    reader.onload = async () => {
+      const content = String(reader.result || '');
+      if (!file.name.endsWith('.json')) return handlePreview(content);
+      try {
+        setDone(await importBackup(JSON.parse(content)));
+        setError('');
+      } catch (err) {
+        setError(err.message);
+      }
+      e.target.value = '';
+    };
     reader.readAsText(file);
+  }
+
+  async function downloadBackup() {
+    const url = URL.createObjectURL(new Blob([JSON.stringify(await exportData())], { type: 'application/json' }));
+    const a = Object.assign(document.createElement('a'), { href: url, download: `ledger-backup-${todayStr()}.json` });
+    a.click();
+    URL.revokeObjectURL(url);
   }
 
   async function confirmImport() {
@@ -62,9 +80,9 @@ export default function ImportTab() {
 
           <button onClick={() => fileRef.current?.click()} className={btnSecondary + ' flex items-center justify-center gap-2 py-2.5 text-sm'}>
             <FileUp size={15} />
-            Upload .csv / .txt file
+            Upload .csv / .txt / backup .json
           </button>
-          <input ref={fileRef} type="file" accept=".csv,.txt" onChange={handleFile} className="hidden" />
+          <input ref={fileRef} type="file" accept=".csv,.txt,.json" onChange={handleFile} className="hidden" />
         </div>
 
         {parsed && (
@@ -85,7 +103,7 @@ export default function ImportTab() {
               <div className="max-h-40 overflow-y-auto rounded-xl border border-zinc-800/80 divide-y divide-zinc-800/80">
                 {parsed.entries.map((e) => (
                   <div key={e.date} className="flex justify-between px-3 py-1.5 text-sm">
-                    <span className="text-zinc-400">{fmtShort(e.date)}</span>
+                    <span className="text-zinc-400">{fmtFull(e.date)}</span>
                     <span className="text-zinc-100 tabular-nums">{e.kg} kg</span>
                   </div>
                 ))}
@@ -101,6 +119,24 @@ export default function ImportTab() {
             </button>
           </div>
         )}
+
+        {error && (
+          <div className="flex items-center gap-2 text-red-400 text-sm bg-red-500/10 rounded-xl px-4 py-3">
+            <AlertTriangle size={16} />
+            {error}
+          </div>
+        )}
+
+        <div className={card + ' flex flex-col gap-3'}>
+          <span className={label}>Backup</span>
+          <p className="text-[12px] text-zinc-500 leading-relaxed">
+            Save all your logs and phases to a file. Upload it above to restore — it only fills in, never deletes.
+          </p>
+          <button onClick={downloadBackup} className={btnSecondary + ' flex items-center justify-center gap-2 py-2.5 text-sm'}>
+            <Download size={15} />
+            Download backup
+          </button>
+        </div>
 
         {done != null && (
           <div className="flex items-center gap-2 text-emerald-400 text-sm bg-emerald-500/10 rounded-xl px-4 py-3">

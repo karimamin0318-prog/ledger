@@ -1,9 +1,5 @@
 import { ChevronDown } from 'lucide-react';
-
-function fmtShort(dateStr) {
-  const [, m, d] = dateStr.split('-');
-  return `${d}.${m}`;
-}
+import { fmtShort } from '../dates';
 
 export default function PhaseFilter({ phases, value, onChange }) {
   if (!phases.length) return null;

@@ -1,16 +1,24 @@
-# React + Vite
+# Ledger
 
-This template provides a minimal setup to get React working in Vite with HMR and some Oxlint rules.
+A minimal, offline-first weight log for your phone. Log morning weight and calories, see trends and week-over-week change, and get an adaptive TDEE (real maintenance calories) from how your weight moves against what you eat. Data never leaves the device (IndexedDB).
 
-Currently, two official plugins are available:
+## Run
 
-- [@vitejs/plugin-react](https://github.com/vitejs/vite-plugin-react/blob/main/packages/plugin-react) uses [Oxc](https://oxc.rs)
-- [@vitejs/plugin-react-swc](https://github.com/vitejs/vite-plugin-react/blob/main/packages/plugin-react-swc) uses [SWC](https://swc.rs/)
+```
+npm install
+npm run dev      # development
+npm test         # unit tests
+npm run build && npm run preview   # production build with service worker
+```
 
-## React Compiler
+## Install on a phone
 
-The React Compiler is not enabled on this template because of its impact on dev & build performances. To add it, see [this documentation](https://react.dev/learn/react-compiler/installation).
+Browsers only offer a real install over HTTPS. For a local setup:
 
-## Expanding the Oxlint configuration
+1. Create a trusted local certificate with [mkcert](https://github.com/FiloSottile/mkcert) and save it as `cert.pem` / `key.pem` in this folder (they are git-ignored; never commit them).
+2. Run `install-on-phone.bat` (build + preview), open `https://<laptop-ip>:4173` on the phone, and choose Install.
+3. After the first load the app is cached and works offline.
 
-If you are developing a production application, we recommend using TypeScript with type-aware lint rules enabled. Check out the [TS template](https://github.com/vitejs/vite/tree/main/packages/create-vite/template-react-ts) for information on how to integrate TypeScript and Oxlint's TypeScript related rules in your project.
+## Backups
+
+Import tab -> **Download backup** saves all logs and phases as JSON. Uploading that file restores it (merge only, nothing is deleted).

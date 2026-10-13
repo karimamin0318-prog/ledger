@@ -1,19 +1,12 @@
 import { useState } from 'react';
 import { useLiveQuery } from 'dexie-react-hooks';
 import { getAllLogs, getAllPhases } from '../db';
-import { computeAdaptiveTDEE, goalTargetCalories, MIN_DAYS_FOR_TDEE, logsInPhase } from '../calculations';
+import { computeAdaptiveTDEE, goalTargetCalories, GOALS, MIN_DAYS_FOR_TDEE, logsInPhase } from '../calculations';
 import Header from './Header';
 import PhaseFilter from './PhaseFilter';
 import { card, sectionTitle, label } from '../ui';
 
-const GOAL_ORDER = ['lose_fast', 'lose_slow', 'maintain', 'gain', 'gain_fast'];
-const GOAL_LABELS = {
-  lose_fast: 'Lose Fast',
-  lose_slow: 'Lose Slow',
-  maintain: 'Maintain',
-  gain: 'Gain',
-  gain_fast: 'Gain Fast',
-};
+const GOAL_ORDER = Object.keys(GOALS);
 
 function fmt1(n) {
   return n == null ? '—' : n.toFixed(1);
@@ -101,14 +94,14 @@ export default function CalculatorTab() {
                     : 'bg-black/30 text-zinc-400 border-zinc-800'
                 }`}
               >
-                {GOAL_LABELS[key]}
+                {GOALS[key].label}
               </button>
             ))}
           </div>
         </div>
 
         <div className={card + ' flex flex-col items-center gap-1 py-6'}>
-          <span className={label}>{GOAL_LABELS[goal]} Target</span>
+          <span className={label}>{GOALS[goal].label} Target</span>
           <span className="text-4xl font-bold text-emerald-400 tabular-nums mt-1">
             {result.ready ? Math.round(goalTargetCalories(result.tdee, result.currentWeight, goal)).toLocaleString() : '—'}
           </span>

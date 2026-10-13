@@ -3,17 +3,14 @@ import { useLiveQuery } from 'dexie-react-hooks';
 import { Layers, X, ChevronDown, ChevronUp } from 'lucide-react';
 import { getAllPhases, getActivePhase, startPhase, endPhase, deletePhase, todayStr } from '../db';
 import { card, input, btnPrimary, btnSecondary, label } from '../ui';
-
-function fmtShort(dateStr) {
-  const [, m, d] = dateStr.split('-');
-  return `${d}.${m}`;
-}
+import { fmtShort } from '../dates';
 
 export default function PhaseManager() {
   const [mode, setMode] = useState(null); // null | 'start' | 'end'
   const [name, setName] = useState('');
   const [dateVal, setDateVal] = useState(todayStr());
   const [showHistory, setShowHistory] = useState(false);
+  const [error, setError] = useState('');
 
   const phases = useLiveQuery(() => getAllPhases(), [], []);
   const active = useLiveQuery(() => getActivePhase(), [], null);
@@ -23,6 +20,7 @@ export default function PhaseManager() {
   function openStart() {
     setName('');
     setDateVal(todayStr());
+    setError('');
     setMode('start');
   }
   function openEnd() {
@@ -32,8 +30,12 @@ export default function PhaseManager() {
 
   async function confirmStart() {
     if (!name.trim()) return;
-    await startPhase(name.trim(), dateVal);
-    setMode(null);
+    try {
+      await startPhase(name.trim(), dateVal);
+      setMode(null);
+    } catch (e) {
+      setError(e.message);
+    }
   }
   async function confirmEnd() {
     if (!active) return;
@@ -95,6 +97,7 @@ export default function PhaseManager() {
                   This will end "{active.name}" the day before this phase starts.
                 </span>
               )}
+              {error && <span className="text-[11px] text-red-400">{error}</span>}
               <input
                 type="text"
                 value={name}

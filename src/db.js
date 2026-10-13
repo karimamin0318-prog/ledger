@@ -1,4 +1,6 @@
 import Dexie from 'dexie';
+import { toDateStr, addDays } from './dates';
+import { isValidWeight, isValidCalories } from './importParser';
 
 export const db = new Dexie('ledger');
 db.version(1).stores({
@@ -19,10 +21,7 @@ db.version(2).stores({
 export function todayStr(offsetDays = 0) {
   const d = new Date();
   d.setDate(d.getDate() + offsetDays);
-  const y = d.getFullYear();
-  const m = String(d.getMonth() + 1).padStart(2, '0');
-  const day = String(d.getDate()).padStart(2, '0');
-  return `${y}-${m}-${day}`;
+  return toDateStr(d);
 }
 
 export async function getAllLogs() {
@@ -30,14 +29,19 @@ export async function getAllLogs() {
   return rows.sort((a, b) => (a.date < b.date ? -1 : 1));
 }
 
-export async function upsertWeight(date, kg) {
-  const existing = await db.logs.get(date);
-  await db.logs.put({ date, caloriesConsumed: null, ...existing, morningWeightKg: kg });
+export function upsertWeight(date, kg) {
+  return mergeLog(date, { morningWeightKg: kg });
 }
 
-export async function upsertCalories(date, kcal) {
-  const existing = await db.logs.get(date);
-  await db.logs.put({ date, morningWeightKg: null, ...existing, caloriesConsumed: kcal });
+export function upsertCalories(date, kcal) {
+  return mergeLog(date, { caloriesConsumed: kcal });
+}
+
+function mergeLog(date, fields) {
+  return db.transaction('rw', db.logs, async () => {
+    const existing = await db.logs.get(date);
+    await db.logs.put({ date, morningWeightKg: null, caloriesConsumed: null, ...existing, ...fields });
+  });
 }
 
 /**
@@ -47,18 +51,32 @@ export async function upsertCalories(date, kcal) {
  */
 export async function bulkImportWeights(entries) {
   await db.transaction('rw', db.logs, async () => {
-    for (const { date, kg } of entries) {
-      const existing = await db.logs.get(date);
-      await db.logs.put({ date, caloriesConsumed: null, ...existing, morningWeightKg: kg });
-    }
+    for (const { date, kg } of entries) await mergeLog(date, { morningWeightKg: kg });
   });
 }
 
-function addDays(dateStr, delta) {
-  const [y, m, d] = dateStr.split('-').map(Number);
-  const dt = new Date(y, m - 1, d);
-  dt.setDate(dt.getDate() + delta);
-  return `${dt.getFullYear()}-${String(dt.getMonth() + 1).padStart(2, '0')}-${String(dt.getDate()).padStart(2, '0')}`;
+/** Everything in the database, for a downloadable backup. */
+export async function exportData() {
+  return { app: 'ledger', version: 1, logs: await getAllLogs(), phases: await getAllPhases() };
+}
+
+/** Merges a backup made by exportData(): fills values in, never deletes. Returns the log count. */
+export async function importBackup(data) {
+  if (data?.app !== 'ledger' || !Array.isArray(data.logs)) throw new Error('Not a Ledger backup file.');
+  const phases = Array.isArray(data.phases) ? data.phases : [];
+  await db.transaction('rw', db.logs, db.phases, async () => {
+    for (const { date, morningWeightKg, caloriesConsumed } of data.logs) {
+      const fields = {};
+      if (isValidWeight(morningWeightKg)) fields.morningWeightKg = morningWeightKg;
+      if (isValidCalories(caloriesConsumed)) fields.caloriesConsumed = caloriesConsumed;
+      await mergeLog(date, fields);
+    }
+    const have = new Set((await db.phases.toArray()).map((p) => p.name + p.startDate));
+    for (const { name, startDate, endDate } of phases) {
+      if (!have.has(name + startDate)) await db.phases.add({ name, startDate, endDate: endDate ?? null });
+    }
+  });
+  return data.logs.length;
 }
 
 export async function getAllPhases() {
@@ -72,12 +90,15 @@ export async function getActivePhase() {
 }
 
 /** Starts a new open-ended phase, auto-closing whatever phase was active the day before it begins. */
-export async function startPhase(name, startDate) {
-  const active = await getActivePhase();
-  if (active) {
-    await db.phases.update(active.id, { endDate: addDays(startDate, -1) });
-  }
-  await db.phases.add({ name, startDate, endDate: null });
+export function startPhase(name, startDate) {
+  return db.transaction('rw', db.phases, async () => {
+    const active = await getActivePhase();
+    if (active && startDate <= active.startDate) {
+      throw new Error(`Start date must be after "${active.name}" began (${active.startDate}).`);
+    }
+    if (active) await db.phases.update(active.id, { endDate: addDays(startDate, -1) });
+    await db.phases.add({ name, startDate, endDate: null });
+  });
 }
 
 export async function endPhase(id, endDate) {

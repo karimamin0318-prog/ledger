@@ -9,11 +9,7 @@ import { rollingAverage, groupByWeek, logsInPhase } from '../calculations';
 import Header from './Header';
 import PhaseFilter from './PhaseFilter';
 import { card, sectionTitle, label, accentDim, muted } from '../ui';
-
-function fmtShort(dateStr) {
-  const [, m, d] = dateStr.split('-');
-  return `${d}.${m}`;
-}
+import { fmtShort, daysBetween } from '../dates';
 
 function fmtDelta(delta) {
   const sign = delta > 0 ? '+' : '';
@@ -112,8 +108,9 @@ export default function AnalyticsTab() {
                     <span className={label + ' w-20 text-right'}>Change</span>
                   </div>
                   {weekly.map((w, i) => {
-                    const prev = i > 0 ? weekly[i - 1].avgWeight : null;
-                    const delta = prev != null ? w.avgWeight - prev : null;
+                    const prev = i > 0 ? weekly[i - 1] : null;
+                    const delta = prev ? w.avgWeight - prev.avgWeight : null;
+                    const gapWeeks = prev ? daysBetween(prev.weekStart, w.weekStart) / 7 : 1; // >1 when weeks had no weigh-ins
                     return (
                       <div key={w.weekStart} className="flex items-center px-3 py-2.5 text-sm">
                         <div className="flex-1 flex flex-col">
@@ -127,6 +124,7 @@ export default function AnalyticsTab() {
                           }`}
                         >
                           {delta == null ? '—' : fmtDelta(delta)}
+                          {gapWeeks > 1 && <span className="text-zinc-600"> ·{gapWeeks}w</span>}
                         </span>
                       </div>
                     );

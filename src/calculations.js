@@ -1,14 +1,7 @@
-const DAY_MS = 86400000;
+import { toDate, toDateStr, daysBetween } from './dates';
+
 const KCAL_PER_KG = 7700;
 export const MIN_DAYS_FOR_TDEE = 14; // 2 weeks minimum
-
-function toDate(dateStr) {
-  const [y, m, d] = dateStr.split('-').map(Number);
-  return new Date(y, m - 1, d);
-}
-function daysBetween(a, b) {
-  return Math.round((toDate(b) - toDate(a)) / DAY_MS);
-}
 
 /** Filters logs down to those falling within a phase's date range. `null` phase means "all time". */
 export function logsInPhase(logs, phase) {
@@ -18,16 +11,14 @@ export function logsInPhase(logs, phase) {
 
 /** Rolling trailing-window average (up to 7 days) for every day that has a weight entry. */
 export function rollingAverage(logs, windowDays = 7) {
-  const weightDays = logs.filter((l) => l.morningWeightKg != null);
-  return weightDays.map((entry) => {
-    const windowStart = new Date(toDate(entry.date));
-    windowStart.setDate(windowStart.getDate() - (windowDays - 1));
-    const inWindow = weightDays.filter((w) => {
-      const t = toDate(w.date);
-      return t >= windowStart && t <= toDate(entry.date);
-    });
-    const avg = inWindow.reduce((s, w) => s + w.morningWeightKg, 0) / inWindow.length;
-    return { date: entry.date, raw: entry.morningWeightKg, avg };
+  const weightDays = logs.filter((l) => l.morningWeightKg != null); // sorted by date
+  const day = weightDays.map((w) => daysBetween(weightDays[0].date, w.date));
+  let lo = 0;
+  let sum = 0;
+  return weightDays.map((entry, i) => {
+    sum += entry.morningWeightKg;
+    while (day[i] - day[lo] >= windowDays) sum -= weightDays[lo++].morningWeightKg;
+    return { date: entry.date, raw: entry.morningWeightKg, avg: sum / (i - lo + 1) };
   });
 }
 
@@ -39,7 +30,7 @@ export function groupByWeek(logs) {
     const day = (d.getDay() + 6) % 7; // 0 = Monday
     const monday = new Date(d);
     monday.setDate(d.getDate() - day);
-    const key = `${monday.getFullYear()}-${String(monday.getMonth() + 1).padStart(2, '0')}-${String(monday.getDate()).padStart(2, '0')}`;
+    const key = toDateStr(monday);
     if (!weeks.has(key)) weeks.set(key, { weekStart: key, weights: [], calories: [] });
     const bucket = weeks.get(key);
     if (log.morningWeightKg != null) bucket.weights.push(log.morningWeightKg);
@@ -54,8 +45,23 @@ export function groupByWeek(logs) {
     .sort((a, b) => (a.weekStart < b.weekStart ? -1 : 1));
 }
 
+/** Least-squares slope (kg/day) through the raw weights, so one noisy day can't swing the result. */
+function trendSlope(points) {
+  const x = points.map((p) => daysBetween(points[0].date, p.date));
+  const n = x.length;
+  const mx = x.reduce((s, v) => s + v, 0) / n;
+  const my = points.reduce((s, p) => s + p.raw, 0) / n;
+  let num = 0;
+  let den = 0;
+  points.forEach((p, i) => {
+    num += (x[i] - mx) * (p.raw - my);
+    den += (x[i] - mx) ** 2;
+  });
+  return num / den;
+}
+
 /**
- * Adaptive TDEE: compares the change in rolling-average bodyweight against
+ * Adaptive TDEE: compares the weight trend (regression slope) against
  * average intake over the same span to back-calculate true maintenance.
  *   dailyCaloricDelta = deltaWeightKg * 7700 / daysElapsed
  *   trueTDEE = avgCalories - dailyCaloricDelta
@@ -74,7 +80,7 @@ export function computeAdaptiveTDEE(logs) {
   const first = rolling[0];
   const last = rolling[rolling.length - 1];
   const daysElapsed = daysBetween(first.date, last.date);
-  const deltaWeight = last.avg - first.avg;
+  const deltaWeight = trendSlope(rolling) * daysElapsed;
 
   const calorieEntries = logs.filter(
     (l) => l.caloriesConsumed != null && l.date >= first.date && l.date <= last.date
@@ -109,11 +115,12 @@ export const GOALS = {
   lose_slow: { label: 'Lose Slow', rateOfWeightPerWeek: -0.007 },
   maintain: { label: 'Maintain', rateOfWeightPerWeek: 0 },
   gain: { label: 'Gain', rateOfWeightPerWeek: 0.0025 },
+  gain_fast: { label: 'Gain Fast' }, // joke option: the UI refuses it, so it has no rate
 };
 
 export function goalTargetCalories(tdee, currentWeightKg, goalKey) {
   const goal = GOALS[goalKey];
-  if (!goal) return tdee;
+  if (goal?.rateOfWeightPerWeek == null) return tdee;
   const dailyAdjustment = (currentWeightKg * goal.rateOfWeightPerWeek * KCAL_PER_KG) / 7;
   return tdee + dailyAdjustment;
 }
