@@ -26,7 +26,7 @@ db.version(3).stores({
 });
 
 export const THEMES = { dark: 'Dark', light: 'Light', midnight: 'Midnight' };
-const DATE_RE = /^d{4}-d{2}-d{2}$/;
+const DATE_RE = /^\d{4}-\d{2}-\d{2}$/;
 const SETTING_KEYS = ['theme', 'steps', 'sex', 'age', 'height'];
 
 export function saveSetting(key, value) {
