@@ -28,7 +28,7 @@ export default function App() {
   useEffect(() => {
     if (!loaded) return;
     applyTheme(theme);
-    localStorage.setItem('theme', theme); // read by index.html before React starts, so there's no flash
+    localStorage.setItem('ledger-theme', theme); // read by index.html before React starts, so there's no flash
   }, [theme, loaded]);
 
   return (

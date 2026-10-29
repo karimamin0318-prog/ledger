@@ -3,11 +3,7 @@ import { FileUp, CheckCircle2, AlertTriangle } from 'lucide-react';
 import { bulkImportWeights } from '../db';
 import { parseImportText } from '../importParser';
 import { card, input, btnPrimary, btnSecondary, label } from '../ui';
-
-function fmtFull(dateStr) {
-  const [y, m, d] = dateStr.split('-');
-  return `${d}.${m}.${y}`;
-}
+import { fmtFull } from '../dates';
 
 export default function ImportCard() {
   const [text, setText] = useState('');
@@ -44,7 +40,7 @@ export default function ImportCard() {
         <span className={label}>Import past weights</span>
         <p className="text-[12px] text-zinc-500 leading-relaxed">
           One entry per line, e.g. <code className="text-zinc-400">2026-08-24, 80.0</code> or{' '}
-          <code className="text-zinc-400">24.08.26 – 80</code>. Existing data is never deleted — this only fills in weights.
+          <code className="text-zinc-400">24.08.26 – 80</code>. Nothing is deleted; a weight in the file replaces the one already on that day.
         </p>
         <textarea
           value={text}

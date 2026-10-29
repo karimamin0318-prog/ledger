@@ -1,7 +1,6 @@
-import { useState } from 'react';
 import { saveSetting } from '../db';
 import { useSettings, usePhaseScope } from '../hooks';
-import { computeAdaptiveTDEE, estimateTDEE, rollingAverage, goalTargetCalories, GOALS, MIN_DAYS_FOR_TDEE } from '../calculations';
+import { phaseTDEE, estimateTDEE, rollingAverage, goalTargetCalories, GOALS, MIN_DAYS_FOR_TDEE } from '../calculations';
 import Header from './Header';
 import PhaseFilter from './PhaseFilter';
 import { card, input, sectionTitle, label } from '../ui';
@@ -13,12 +12,13 @@ function fmt1(n) {
 }
 
 export default function CalculatorTab() {
-  const [goal, setGoal] = useState('maintain');
-  const { logs, phases, phaseId, setPhaseId, scopedLogs } = usePhaseScope();
+  const { logs, phases, phase, phaseId, setPhaseId } = usePhaseScope();
   const settings = useSettings();
+  const goal = Object.hasOwn(GOALS, settings.goal) ? settings.goal : 'maintain';
   const latestWeight = rollingAverage(logs).at(-1)?.avg;
 
-  const result = computeAdaptiveTDEE(scopedLogs);
+  const result = phaseTDEE(logs, phase, phases);
+  const own = result.own ?? result; // this phase alone, for the progress bar
   const estimate = estimateTDEE({
     sex: settings.sex,
     age: settings.age,
@@ -35,11 +35,11 @@ export default function CalculatorTab() {
       window.alert("You can't gain fast, you fat fuck");
       return;
     }
-    setGoal(key);
+    saveSetting('goal', key);
   }
 
-  const progressPct = Math.min(100, (result.daysElapsed / result.needed) * 100);
-  const missingCalories = Math.max(0, 7 - result.calorieCount);
+  const progressPct = Math.min(100, (own.daysElapsed / own.needed) * 100);
+  const missingCalories = Math.max(0, 7 - own.calorieCount);
 
   return (
     <div className="flex-1 flex flex-col overflow-y-auto">
@@ -56,9 +56,13 @@ export default function CalculatorTab() {
             {result.ready ? Math.round(result.tdee).toLocaleString() : '—'}
           </span>
 
-          {result.ready ? (
-            <span className="text-zinc-500 text-xs mt-1">kcal / day · based on {result.daysElapsed} days</span>
-          ) : (
+          {result.ready && (
+            <span className="text-zinc-500 text-xs mt-1 text-center">
+              kcal / day · based on {result.daysElapsed} days
+              {result.bridge && <>, incl. the end of “{result.bridge.name}”</>}
+            </span>
+          )}
+          {!own.ready && (
             <div className="flex flex-col items-center gap-2 mt-2 w-full">
               <div className="w-full h-1.5 bg-zinc-800 rounded-full overflow-hidden max-w-[220px]">
                 <div
@@ -67,8 +71,8 @@ export default function CalculatorTab() {
                 />
               </div>
               <p className="text-zinc-500 text-xs text-center">
-                {result.daysElapsed} / {result.needed} days logged
-                {result.reason === 'calories' && ` · ${missingCalories} more calorie ${missingCalories === 1 ? 'entry' : 'entries'} needed`}
+                {own.daysElapsed} / {own.needed} days logged{result.bridge && ' in this phase'}
+                {own.reason === 'calories' && ` · ${missingCalories} more calorie ${missingCalories === 1 ? 'entry' : 'entries'} needed`}
               </p>
             </div>
           )}
@@ -138,7 +142,7 @@ export default function CalculatorTab() {
           </span>
           <span className="text-zinc-500 text-xs mt-1">
             {tdee == null
-              ? `Needs your TDEE (${MIN_DAYS_FOR_TDEE}+ days of data) or the activity estimate below`
+              ? `Needs your TDEE (${MIN_DAYS_FOR_TDEE}+ days of data) or the activity estimate above`
               : result.ready ? 'kcal / day' : 'kcal / day · from the activity estimate'}
           </span>
         </div>

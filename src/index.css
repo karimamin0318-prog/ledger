@@ -106,6 +106,9 @@ html, body, #root {
   from { transform: translateY(-120%); }
   to { transform: translateY(0); }
 }
+@keyframes menu {
+  from { opacity: 0; transform: translateY(-4px); }
+}
 
 input[type="number"]::-webkit-inner-spin-button,
 input[type="number"]::-webkit-outer-spin-button {

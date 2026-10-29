@@ -3,10 +3,9 @@ import { useLiveQuery } from 'dexie-react-hooks';
 import { ChevronRight, ArrowLeft, Trash2 } from 'lucide-react';
 import { getAllLogs, getAllPhases, deletePhase, todayStr } from '../db';
 import { phaseSummary } from '../calculations';
-import { daysBetween } from '../dates';
+import { daysBetween, fmtFull } from '../dates';
 import { card, label } from '../ui';
 
-const fmtDate = (s) => s.split('-').reverse().join('.');
 const kg = (v) => (v == null ? '—' : `${v.toFixed(1)} kg`);
 const signed = (v, unit) => (v == null ? '—' : `${v > 0 ? '+' : ''}${v.toFixed(1)} ${unit}`);
 
@@ -20,8 +19,8 @@ export default function PhasesSection() {
   if (open) {
     const s = phaseSummary(logs, open, today);
     const rows = [
-      ['Started', fmtDate(open.startDate)],
-      ['Ended', open.endDate ? fmtDate(open.endDate) : 'ongoing'],
+      ['Started', fmtFull(open.startDate)],
+      ['Ended', open.endDate ? fmtFull(open.endDate) : 'ongoing'],
       ['Length', `${s.days} days · ${s.weeks.toFixed(1)} wk`],
       ['Weigh-ins', s.weighIns],
       ['Start → end weight', `${kg(s.startWeight)} → ${kg(s.endWeight)}`],
@@ -74,7 +73,7 @@ export default function PhasesSection() {
               <div className="flex flex-col">
                 <span className="text-zinc-100 text-sm font-medium">{p.name}</span>
                 <span className="text-zinc-500 text-xs">
-                  {fmtDate(p.startDate)} – {p.endDate ? fmtDate(p.endDate) : 'now'} · {weeks.toFixed(1)} wk
+                  {fmtFull(p.startDate)} – {p.endDate ? fmtFull(p.endDate) : 'now'} · {weeks.toFixed(1)} wk
                 </span>
               </div>
               <ChevronRight size={16} className="text-zinc-600" />

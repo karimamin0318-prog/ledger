@@ -1,4 +1,4 @@
-import { toDate, toDateStr, daysBetween } from './dates';
+import { toDate, toDateStr, daysBetween, addDays } from './dates';
 
 const KCAL_PER_KG = 7700;
 export const MIN_DAYS_FOR_TDEE = 14; // 2 weeks minimum
@@ -108,6 +108,24 @@ export function computeAdaptiveTDEE(logs) {
     deltaWeight,
     currentWeight,
   };
+}
+
+export const BRIDGE_DAYS = 28;
+
+/**
+ * TDEE for one phase (null = all time). Until the phase has enough data of its own, the last
+ * BRIDGE_DAYS before it (from the phase before) count too; that earlier phase's own number never changes.
+ * When it bridges, the result also carries `own` (this phase alone) and `bridge` (the earlier phase).
+ */
+export function phaseTDEE(logs, phase, phases) {
+  const own = computeAdaptiveTDEE(logsInPhase(logs, phase));
+  const prev = phase && phases.filter((p) => p.startDate < phase.startDate).at(-1);
+  if (own.ready || !prev) return own;
+  const from = addDays(phase.startDate, -BRIDGE_DAYS);
+  const bridged = computeAdaptiveTDEE(
+    logsInPhase(logs, { startDate: from > prev.startDate ? from : prev.startDate, endDate: phase.endDate })
+  );
+  return bridged.ready ? { ...bridged, own, bridge: prev } : own;
 }
 
 export const GOALS = {

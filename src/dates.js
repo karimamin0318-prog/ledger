@@ -24,3 +24,8 @@ export function fmtShort(dateStr) {
   const [, m, d] = dateStr.split('-');
   return `${d}.${m}`;
 }
+
+/** "2026-08-24" -> "24.08.2026" */
+export function fmtFull(dateStr) {
+  return dateStr.split('-').reverse().join('.');
+}

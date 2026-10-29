@@ -79,58 +79,50 @@ export default function AnalyticsTab() {
 
             <section className={card + ' flex flex-col gap-3'}>
               <h2 className={sectionTitle}>Weekly Average</h2>
-              {weekly.length ? (
-                <div className="h-40 -ml-2">
-                  <ResponsiveContainer width="100%" height="100%">
-                    <BarChart data={weekly} accessibilityLayer={false} margin={{ top: 4, right: 8, bottom: 0, left: 0 }}>
-                      <CartesianGrid stroke="var(--color-zinc-800)" strokeOpacity={0.5} vertical={false} />
-                      <XAxis dataKey="label" tick={tick} axisLine={{ stroke: 'var(--color-zinc-800)' }} tickLine={false} />
-                      <YAxis tick={tick} tickFormatter={fmt1} domain={yDomain} width={32} axisLine={false} tickLine={false} />
-                      <Tooltip contentStyle={tooltipStyle} labelStyle={{ color: 'var(--color-zinc-200)' }} formatter={fmt1} cursor={{ fill: 'var(--color-zinc-800)', fillOpacity: 0.4 }} />
-                      <Bar dataKey="avgWeight" name="Avg" fill={accentDim} radius={[4, 4, 0, 0]} isAnimationActive={false} />
-                    </BarChart>
-                  </ResponsiveContainer>
-                </div>
-              ) : (
-                <p className="text-zinc-600 text-xs text-center py-8">Not enough data yet.</p>
-              )}
+              <div className="h-40 -ml-2">
+                <ResponsiveContainer width="100%" height="100%">
+                  <BarChart data={weekly} accessibilityLayer={false} margin={{ top: 4, right: 8, bottom: 0, left: 0 }}>
+                    <CartesianGrid stroke="var(--color-zinc-800)" strokeOpacity={0.5} vertical={false} />
+                    <XAxis dataKey="label" tick={tick} axisLine={{ stroke: 'var(--color-zinc-800)' }} tickLine={false} />
+                    <YAxis tick={tick} tickFormatter={fmt1} domain={yDomain} width={32} axisLine={false} tickLine={false} />
+                    <Tooltip contentStyle={tooltipStyle} labelStyle={{ color: 'var(--color-zinc-200)' }} formatter={fmt1} cursor={{ fill: 'var(--color-zinc-800)', fillOpacity: 0.4 }} />
+                    <Bar dataKey="avgWeight" name="Avg" fill={accentDim} radius={[4, 4, 0, 0]} isAnimationActive={false} />
+                  </BarChart>
+                </ResponsiveContainer>
+              </div>
             </section>
 
             <section className={card + ' flex flex-col gap-1'}>
               <h2 className={sectionTitle + ' mb-2'}>Week-over-Week</h2>
-              {weekly.length ? (
-                <div className="rounded-xl border border-zinc-800/80 divide-y divide-zinc-800/80 overflow-hidden">
-                  <div className="flex px-3 py-2 bg-zinc-950/20">
-                    <span className={label + ' flex-1'}>Week</span>
-                    <span className={label + ' w-16 text-right'}>Avg</span>
-                    <span className={label + ' w-20 text-right'}>Change</span>
-                  </div>
-                  {weekly.map((w, i) => {
-                    const prev = i > 0 ? weekly[i - 1] : null;
-                    const delta = prev ? w.avgWeight - prev.avgWeight : null;
-                    const gapWeeks = prev ? daysBetween(prev.weekStart, w.weekStart) / 7 : 1; // >1 when weeks had no weigh-ins
-                    return (
-                      <div key={w.weekStart} className="flex items-center px-3 py-2.5 text-sm">
-                        <div className="flex-1 flex flex-col">
-                          <span className="text-zinc-200 font-medium">Week {i + 1}</span>
-                          <span className="text-zinc-600 text-[11px]">from {w.label}</span>
-                        </div>
-                        <span className="w-16 text-right text-zinc-200 tabular-nums">{w.avgWeight.toFixed(1)}</span>
-                        <span
-                          className={`w-20 text-right tabular-nums text-[13px] ${
-                            delta == null ? 'text-zinc-600' : delta < -0.02 ? 'text-emerald-400' : delta > 0.02 ? 'text-amber-400' : 'text-zinc-500'
-                          }`}
-                        >
-                          {delta == null ? '—' : fmtDelta(delta)}
-                          {gapWeeks > 1 && <span className="text-zinc-600"> ·{gapWeeks}w</span>}
-                        </span>
-                      </div>
-                    );
-                  })}
+              <div className="rounded-xl border border-zinc-800/80 divide-y divide-zinc-800/80 overflow-hidden">
+                <div className="flex px-3 py-2 bg-zinc-950/20">
+                  <span className={label + ' flex-1'}>Week</span>
+                  <span className={label + ' w-16 text-right'}>Avg</span>
+                  <span className={label + ' w-20 text-right'}>Change</span>
                 </div>
-              ) : (
-                <p className="text-zinc-600 text-xs text-center py-6">Not enough data yet.</p>
-              )}
+                {weekly.map((w, i) => {
+                  const prev = i > 0 ? weekly[i - 1] : null;
+                  const delta = prev ? w.avgWeight - prev.avgWeight : null;
+                  const gapWeeks = prev ? daysBetween(prev.weekStart, w.weekStart) / 7 : 1; // >1 when weeks had no weigh-ins
+                  return (
+                    <div key={w.weekStart} className="flex items-center px-3 py-2.5 text-sm">
+                      <div className="flex-1 flex flex-col">
+                        <span className="text-zinc-200 font-medium">Week {i + 1}</span>
+                        <span className="text-zinc-600 text-[11px]">from {w.label}</span>
+                      </div>
+                      <span className="w-16 text-right text-zinc-200 tabular-nums">{w.avgWeight.toFixed(1)}</span>
+                      <span
+                        className={`w-20 text-right tabular-nums text-[13px] ${
+                          delta == null ? 'text-zinc-600' : delta < -0.02 ? 'text-emerald-400' : delta > 0.02 ? 'text-amber-400' : 'text-zinc-500'
+                        }`}
+                      >
+                        {delta == null ? '—' : fmtDelta(delta)}
+                        {gapWeeks > 1 && <span className="text-zinc-600"> ·{gapWeeks}w</span>}
+                      </span>
+                    </div>
+                  );
+                })}
+              </div>
             </section>
           </>
         )}

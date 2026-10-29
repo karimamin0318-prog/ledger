@@ -6,6 +6,7 @@ import { useSettings } from '../hooks';
 import ImportCard from './ImportCard';
 import PhasesSection from './PhasesSection';
 import { card, btnSecondary, label } from '../ui';
+import { fmtFull } from '../dates';
 
 export default function SettingsTab() {
   const { theme, lastBackup } = useSettings();
@@ -16,7 +17,8 @@ export default function SettingsTab() {
     const file = e.target.files?.[0];
     if (!file) return;
     try {
-      const n = await importBackup(JSON.parse(await file.text()));
+      const data = await file.text().then(JSON.parse).catch(() => null); // not JSON: importBackup says "Not a Ledger backup"
+      const n = await importBackup(data);
       setMsg({ ok: true, text: `Restored ${n.logs} entries and ${n.phases} new phase${n.phases === 1 ? "" : "s"}.` });
     } catch (err) {
       setMsg({ ok: false, text: err.message });
@@ -56,9 +58,9 @@ export default function SettingsTab() {
         <div className={card + ' flex flex-col gap-3'}>
           <span className={label}>Backup</span>
           <p className="text-[12px] text-zinc-500 leading-relaxed">
-            One file with everything you entered: weights, calories, phases and settings. Restoring only fills in — it never deletes.
+            One file with everything you entered: weights, calories, phases and settings. Restoring never deletes; values in the file replace the same days and your settings.
             <br />
-            Last backup: <span className="text-zinc-300">{lastBackup ? lastBackup.split('-').reverse().join('.') : 'never'}</span>
+            Last backup: <span className="text-zinc-300">{lastBackup ? fmtFull(lastBackup) : 'never'}</span>
           </p>
           <div className="grid grid-cols-2 gap-2">
             <button onClick={saveBackup} className={btnSecondary + ' flex items-center justify-center gap-2 py-2.5 text-sm'}>

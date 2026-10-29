@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest';
-import { rollingAverage, groupByWeek, computeAdaptiveTDEE, logsInPhase, estimateTDEE, phaseSummary } from '../src/calculations';
+import { rollingAverage, groupByWeek, computeAdaptiveTDEE, logsInPhase, estimateTDEE, phaseSummary, phaseTDEE } from '../src/calculations';
 import { addDays } from '../src/dates';
 
 const day = (i) => addDays('2026-08-24', i); // 2026-08-24 is a Monday
@@ -69,5 +69,29 @@ describe('phaseSummary', () => {
     expect(s.change).toBeCloseTo(-1.3);
     expect(s.perWeek).toBeCloseTo(-0.7);
     expect(s.avgCalories).toBe(2000);
+  });
+});
+
+describe('phaseTDEE', () => {
+  // Old phase: 30 days flat at 80 kg on 2500 kcal. New phase starts on day 30 with 5 days on 2000 kcal.
+  const logs = Array.from({ length: 35 }, (_, i) => ({ date: day(i), morningWeightKg: 80, caloriesConsumed: i < 30 ? 2500 : 2000 }));
+  const old = { id: 1, startDate: day(0), endDate: day(29) };
+  const next = { id: 2, startDate: day(30), endDate: null };
+
+  it('a new phase borrows the last 4 weeks of the one before until it has enough of its own', () => {
+    const r = phaseTDEE(logs, next, [old, next]);
+    expect(r.ready).toBe(true);
+    expect(r.bridge).toBe(old);
+    expect(r.own.ready).toBe(false);
+    expect(r.tdee).toBeCloseTo((2500 * 28 + 2000 * 5) / 33); // days 2-29 of the old phase + days 30-34
+  });
+  it('the old phase keeps its own number', () => {
+    expect(phaseTDEE(logs, old, [old, next]).tdee).toBeCloseTo(2500);
+  });
+  it('once the new phase is ready on its own, only its days count', () => {
+    const longer = [...logs, ...Array.from({ length: 15 }, (_, i) => ({ date: day(35 + i), morningWeightKg: 80, caloriesConsumed: 2000 }))];
+    const r = phaseTDEE(longer, next, [old, next]);
+    expect(r.bridge).toBeUndefined();
+    expect(r.tdee).toBeCloseTo(2000);
   });
 });

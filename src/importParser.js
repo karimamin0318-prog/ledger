@@ -1,7 +1,7 @@
 const DATE_TOKEN = /(\d{4}-\d{1,2}-\d{1,2}|\d{1,2}[./]\d{1,2}[./](?:\d{4}|\d{2})(?!\d))/;
 // One rule for every way a value gets in (typing, editing, import).
 export const isValidWeight = (v) => Number.isFinite(v) && v >= 20 && v <= 400;
-export const isValidCalories = (v) => Number.isFinite(v) && v > 0 && v <= 10000;
+export const isValidCalories = (v) => Number.isFinite(v) && v >= 0 && v <= 10000;
 
 const NUMBER_TOKEN = /(\d+(?:[.,]\d+)?)/;
 

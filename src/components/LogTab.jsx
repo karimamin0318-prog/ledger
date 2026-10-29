@@ -1,7 +1,7 @@
 import { useState } from 'react';
 import { useLiveQuery } from 'dexie-react-hooks';
 import { Check, X, Plus, Scale, Flame } from 'lucide-react';
-import { todayStr, getAllLogs, getActivePhase, upsertWeight, upsertCalories, deleteField } from '../db';
+import { todayStr, getAllLogs, getAllPhases, upsertWeight, upsertCalories, deleteField } from '../db';
 import { logsInPhase } from '../calculations';
 import { isValidWeight, isValidCalories } from '../importParser';
 import Header from './Header';
@@ -23,9 +23,17 @@ export default function LogTab() {
   const [editValue, setEditValue] = useState('');
   const [showAll, setShowAll] = useState(false);
 
+  const [viewId, setViewId] = useState(null); // phase being browsed; null = the newest slot
+
   const logs = useLiveQuery(() => getAllLogs(), [], []);
-  const activePhase = useLiveQuery(() => getActivePhase(), [], null);
-  const sortedDesc = [...logsInPhase(logs, activePhase)].reverse();
+  const phases = useLiveQuery(() => getAllPhases(), [], []);
+  const activePhase = phases.find((p) => !p.endDate) || null;
+  // One slot per phase, plus a "no active phase" slot at the end when nothing is running.
+  const slots = activePhase ? phases : [...phases, null];
+  const picked = slots.findIndex((p) => p && p.id === viewId);
+  const viewIdx = picked >= 0 ? picked : slots.length - 1;
+  const viewed = slots[viewIdx];
+  const sortedDesc = [...logsInPhase(logs, viewed)].reverse();
   const visible = showAll ? sortedDesc : sortedDesc.slice(0, 7);
 
   async function submitWeight() {
@@ -66,7 +74,14 @@ export default function LogTab() {
       <Header title="Daily Log" />
 
       <div className="flex flex-col gap-4 px-4 pt-3">
-        <PhaseManager />
+        <PhaseManager
+          phase={viewed}
+          active={activePhase}
+          hasPrev={viewIdx > 0}
+          hasNext={viewIdx < slots.length - 1}
+          onMove={(d) => setViewId(slots[viewIdx + d]?.id ?? null)}
+          onStarted={() => setViewId(null)}
+        />
 
         <div className={card + ' flex flex-col gap-3'}>
           <div className="flex items-center gap-2">
@@ -132,7 +147,8 @@ export default function LogTab() {
 
         <div className="flex flex-col gap-0.5">
           <span className={label + ' mb-1.5 px-1'}>
-            {showAll ? `All Entries${activePhase ? ` · ${activePhase.name}` : ''}` : 'Last 7 Entries'}
+            {showAll ? 'All Entries' : 'Last 7 Entries'}
+            {viewed && ` · ${viewed.name}`}
           </span>
           {visible.length === 0 && (
             <p className="text-zinc-600 text-sm py-8 text-center">No entries yet.</p>
