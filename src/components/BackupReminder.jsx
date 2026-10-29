@@ -1,9 +1,9 @@
 import { useState } from 'react';
 import { useLiveQuery } from 'dexie-react-hooks';
 import { CloudUpload, X } from 'lucide-react';
-import { db, todayStr } from '../db';
+import { db } from '../db';
 import { saveBackup } from '../backup';
-import { daysBetween } from '../dates';
+import { daysBetween, todayStr } from '../dates';
 import { btnPrimary } from '../ui';
 
 const EVERY_DAYS = 14;

@@ -6,13 +6,8 @@ import { rollingAverage, groupByWeek } from '../calculations';
 import { usePhaseScope } from '../hooks';
 import Header from './Header';
 import PhaseFilter from './PhaseFilter';
-import { card, sectionTitle, label, accentDim, muted } from '../ui';
+import { card, sectionTitle, label, accentDim, muted, fmt1, signed } from '../ui';
 import { fmtShort, daysBetween } from '../dates';
-
-function fmtDelta(delta) {
-  const sign = delta > 0 ? '+' : '';
-  return `${sign}${delta.toFixed(1)} kg`;
-}
 
 const tooltipStyle = {
   background: 'var(--color-zinc-900)',
@@ -24,7 +19,6 @@ const tooltipStyle = {
 const tick = { fontSize: 10, fill: 'var(--color-zinc-500)' };
 // Round the y-axis to whole kg so the ticks read 77 / 78 / 79 instead of 78.1 / 80.1.
 const yDomain = [(min) => Math.floor(min - 0.5), (max) => Math.ceil(max + 0.5)];
-const fmt1 = (v) => v.toFixed(1);
 
 export default function AnalyticsTab() {
   const { phases, phaseId, setPhaseId, scopedLogs } = usePhaseScope();
@@ -116,7 +110,7 @@ export default function AnalyticsTab() {
                           delta == null ? 'text-zinc-600' : delta < -0.02 ? 'text-emerald-400' : delta > 0.02 ? 'text-amber-400' : 'text-zinc-500'
                         }`}
                       >
-                        {delta == null ? '—' : fmtDelta(delta)}
+                        {delta == null ? '—' : signed(delta, 'kg')}
                         {gapWeeks > 1 && <span className="text-zinc-600"> ·{gapWeeks}w</span>}
                       </span>
                     </div>

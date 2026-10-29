@@ -1,15 +1,16 @@
 import { useState } from 'react';
 import { useLiveQuery } from 'dexie-react-hooks';
 import { Check, X, Plus, Scale, Flame } from 'lucide-react';
-import { todayStr, getAllLogs, getAllPhases, upsertWeight, upsertCalories, deleteField } from '../db';
+import { getAllLogs, getAllPhases, upsertWeight, upsertCalories, deleteField } from '../db';
 import { logsInPhase } from '../calculations';
 import { isValidWeight, isValidCalories } from '../importParser';
 import Header from './Header';
 import PhaseManager from './PhaseManager';
 import { card, input, btnPrimary, label } from '../ui';
-import { fmtShort } from '../dates';
+import { fmtShort, todayStr } from '../dates';
 
 const FIELDS = [['morningWeightKg', 'kg'], ['caloriesConsumed', 'kcal']];
+const BAD = ' !border-red-500/70';
 
 export default function LogTab() {
   // null = today / yesterday, worked out on every render so a PWA left open overnight doesn't keep yesterday's date.
@@ -22,6 +23,7 @@ export default function LogTab() {
   const [editing, setEditing] = useState(null); // { date, field }
   const [editValue, setEditValue] = useState('');
   const [showAll, setShowAll] = useState(false);
+  const [bad, setBad] = useState(null); // 'weight' | 'calories' | 'edit': that field holds a value out of range
 
   const [viewId, setViewId] = useState(null); // phase being browsed; null = the newest slot
 
@@ -38,7 +40,7 @@ export default function LogTab() {
 
   async function submitWeight() {
     const v = parseFloat(weightInput);
-    if (!isValidWeight(v)) return;
+    if (!isValidWeight(v)) return setBad('weight');
     await upsertWeight(weightDate, v);
     setWeightInput('');
     setWeightDate(null);
@@ -46,7 +48,7 @@ export default function LogTab() {
 
   async function submitCalories() {
     const v = parseFloat(calorieInput);
-    if (!isValidCalories(v)) return;
+    if (!isValidCalories(v)) return setBad('calories');
     await upsertCalories(calorieDate, v);
     setCalorieInput('');
     setCalorieDate(null);
@@ -56,9 +58,9 @@ export default function LogTab() {
     if (!editing) return;
     const { date, field } = editing; // capture now — `editing` may point elsewhere by the time this resolves
     const v = parseFloat(editValue);
-    if (field === 'morningWeightKg' ? isValidWeight(v) : isValidCalories(v)) {
-      await (field === 'morningWeightKg' ? upsertWeight : upsertCalories)(date, v);
-    }
+    const ok = field === 'morningWeightKg' ? isValidWeight(v) : isValidCalories(v);
+    if (!ok && editValue.trim()) return setBad('edit'); // keep the editor open so the typo can be fixed
+    if (ok) await (field === 'morningWeightKg' ? upsertWeight : upsertCalories)(date, v);
     // Only close the editor if it's still the same cell — otherwise this stale
     // save (e.g. triggered by blurring into a different row) would clobber
     // whichever cell the user has since opened.
@@ -101,9 +103,12 @@ export default function LogTab() {
               inputMode="decimal"
               step="0.1"
               value={weightInput}
-              onChange={(e) => setWeightInput(e.target.value)}
+              onChange={(e) => {
+                setWeightInput(e.target.value);
+                setBad(null);
+              }}
               placeholder="kg"
-              className={input + ' flex-1 min-w-0 text-center'}
+              className={input + ' flex-1 min-w-0 text-center' + (bad === 'weight' ? BAD : '')}
             />
             <button onClick={submitWeight} className={btnPrimary + ' shrink-0 px-5'}>
               Save
@@ -132,9 +137,12 @@ export default function LogTab() {
               inputMode="numeric"
               step="1"
               value={calorieInput}
-              onChange={(e) => setCalorieInput(e.target.value)}
+              onChange={(e) => {
+                setCalorieInput(e.target.value);
+                setBad(null);
+              }}
               placeholder="kcal"
-              className={input + ' flex-1 min-w-0 text-center'}
+              className={input + ' flex-1 min-w-0 text-center' + (bad === 'calories' ? BAD : '')}
             />
             <button onClick={submitCalories} className={btnPrimary + ' shrink-0 px-5'}>
               Save
@@ -163,18 +171,27 @@ export default function LogTab() {
                     value={row[field]}
                     unit={unit}
                     editing={editing?.date === row.date && editing?.field === field}
+                    invalid={bad === 'edit'}
                     editValue={editValue}
-                    setEditValue={setEditValue}
+                    setEditValue={(v) => {
+                      setEditValue(v);
+                      setBad(null);
+                    }}
                     onEdit={() => {
                       setEditing({ date: row.date, field });
                       setEditValue(String(row[field]));
+                      setBad(null);
                     }}
                     onAdd={() => {
                       setEditing({ date: row.date, field });
                       setEditValue('');
+                      setBad(null);
                     }}
                     onSave={saveEdit}
-                    onCancel={() => setEditing(null)}
+                    onCancel={() => {
+                      setEditing(null);
+                      setBad(null);
+                    }}
                     onDelete={() => remove(row.date, field)}
                   />
                 ))}
@@ -195,7 +212,7 @@ export default function LogTab() {
   );
 }
 
-function Cell({ value, unit, editing, editValue, setEditValue, onEdit, onAdd, onSave, onCancel, onDelete }) {
+function Cell({ value, unit, editing, invalid, editValue, setEditValue, onEdit, onAdd, onSave, onCancel, onDelete }) {
   if (editing) {
     return (
       <div className="flex-1 flex items-center gap-1.5">
@@ -211,7 +228,7 @@ function Cell({ value, unit, editing, editValue, setEditValue, onEdit, onAdd, on
           }}
           onBlur={onSave}
           placeholder={unit}
-          className="w-full bg-zinc-800 rounded-lg px-2 py-1 text-white text-sm focus:outline-none focus:ring-1 focus:ring-emerald-500"
+          className={`w-full bg-zinc-800 rounded-lg px-2 py-1 text-white text-sm focus:outline-none focus:ring-1 ${invalid ? 'ring-1 ring-red-500 focus:ring-red-500' : 'focus:ring-emerald-500'}`}
         />
         <button onMouseDown={(e) => e.preventDefault()} onClick={onSave} className="text-emerald-400 shrink-0">
           <Check size={16} />

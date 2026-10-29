@@ -1,6 +1,6 @@
 import 'fake-indexeddb/auto';
 import { it, expect, beforeEach } from 'vitest';
-import { db, startPhase, movePhaseStart, getAllPhases, upsertWeight, upsertCalories, deleteField, importBackup } from '../src/db';
+import { db, startPhase, endPhase, movePhaseStart, getAllPhases, upsertWeight, upsertCalories, deleteField, importBackup, exportData } from '../src/db';
 import { isValidCalories } from '../src/importParser';
 
 beforeEach(() => Promise.all(db.tables.map((t) => t.clear())));
@@ -13,6 +13,28 @@ it('starting a phase ends the active one the day before, and refuses a start bef
     { name: 'Cut', endDate: null },
   ]);
   await expect(startPhase('Old', '2026-08-01')).rejects.toThrow('must be after');
+});
+
+it('a new phase after an ended one never overlaps or lands before it', async () => {
+  await startPhase('Cut', '2026-09-01');
+  await endPhase((await getAllPhases())[0].id, '2026-10-20');
+  await startPhase('Bulk', '2026-10-01');
+  expect(await getAllPhases()).toMatchObject([
+    { name: 'Cut', endDate: '2026-09-30' },
+    { name: 'Bulk', endDate: null },
+  ]);
+  await expect(startPhase('Old', '2026-08-01')).rejects.toThrow('must be after');
+});
+
+it('restoring after a moved start adds no second copy of the phase', async () => {
+  await startPhase('Bulk', '2026-06-01');
+  await startPhase('Cut', '2026-09-01');
+  const backup = await exportData();
+  await movePhaseStart((await getAllPhases())[1].id, '2026-09-05');
+  expect(await importBackup(backup)).toMatchObject({ phases: 0 });
+  await movePhaseStart((await getAllPhases())[1].id, '2026-08-25');
+  expect(await importBackup(backup)).toMatchObject({ phases: 0 });
+  expect(await db.phases.count()).toBe(2);
 });
 
 it('deleting one field keeps the other, deleting the last one removes the day', async () => {

@@ -13,3 +13,7 @@ export const label = 'text-[11px] font-semibold text-zinc-500 uppercase tracking
 export const sectionTitle = 'text-[13px] font-semibold text-zinc-300';
 export const accentDim = 'var(--color-emerald-400)';
 export const muted = 'var(--color-zinc-600)';
+
+export const fmt1 = (v) => (v == null ? '—' : v.toFixed(1));
+/** (1.23, 'kg') -> "+1.2 kg" */
+export const signed = (v, unit = '') => (v == null ? '—' : `${v > 0 ? '+' : ''}${v.toFixed(1)}${unit && ` ${unit}`}`);

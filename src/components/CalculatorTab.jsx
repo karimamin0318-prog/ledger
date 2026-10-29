@@ -1,15 +1,11 @@
 import { saveSetting } from '../db';
 import { useSettings, usePhaseScope } from '../hooks';
-import { phaseTDEE, estimateTDEE, rollingAverage, goalTargetCalories, GOALS, MIN_DAYS_FOR_TDEE } from '../calculations';
+import { phaseTDEE, estimateTDEE, rollingAverage, goalTargetCalories, GOALS, MIN_DAYS_FOR_TDEE, MIN_CALORIE_DAYS } from '../calculations';
 import Header from './Header';
 import PhaseFilter from './PhaseFilter';
-import { card, input, sectionTitle, label } from '../ui';
+import { card, input, sectionTitle, label, fmt1, signed } from '../ui';
 
 const GOAL_ORDER = Object.keys(GOALS);
-
-function fmt1(n) {
-  return n == null ? '—' : n.toFixed(1);
-}
 
 export default function CalculatorTab() {
   const { logs, phases, phase, phaseId, setPhaseId } = usePhaseScope();
@@ -39,7 +35,7 @@ export default function CalculatorTab() {
   }
 
   const progressPct = Math.min(100, (own.daysElapsed / own.needed) * 100);
-  const missingCalories = Math.max(0, 7 - own.calorieCount);
+  const missingCalories = Math.max(0, MIN_CALORIE_DAYS - own.calorieCount);
 
   return (
     <div className="flex-1 flex flex-col overflow-y-auto">
@@ -82,7 +78,7 @@ export default function CalculatorTab() {
           <Stat label="Avg Intake" value={result.avgCalories == null ? '—' : Math.round(result.avgCalories)} unit="kcal" />
           <Stat
             label="Weight Δ"
-            value={result.deltaWeight == null ? '—' : (result.deltaWeight >= 0 ? '+' : '') + fmt1(result.deltaWeight)}
+            value={signed(result.deltaWeight)}
             unit="kg"
           />
           <Stat label="Current Wt" value={fmt1(result.currentWeight)} unit="kg" />

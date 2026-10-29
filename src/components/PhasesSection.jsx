@@ -1,13 +1,12 @@
 import { useState } from 'react';
 import { useLiveQuery } from 'dexie-react-hooks';
 import { ChevronRight, ArrowLeft, Trash2 } from 'lucide-react';
-import { getAllLogs, getAllPhases, deletePhase, todayStr } from '../db';
+import { getAllLogs, getAllPhases, deletePhase } from '../db';
 import { phaseSummary } from '../calculations';
-import { daysBetween, fmtFull } from '../dates';
-import { card, label } from '../ui';
+import { daysBetween, fmtFull, todayStr } from '../dates';
+import { card, label, signed } from '../ui';
 
 const kg = (v) => (v == null ? '—' : `${v.toFixed(1)} kg`);
-const signed = (v, unit) => (v == null ? '—' : `${v > 0 ? '+' : ''}${v.toFixed(1)} ${unit}`);
 
 export default function PhasesSection() {
   const phases = useLiveQuery(() => getAllPhases(), [], []);

@@ -1,5 +1,5 @@
 import Dexie from 'dexie';
-import { toDateStr, addDays } from './dates';
+import { addDays } from './dates';
 import { isValidWeight, isValidCalories } from './importParser';
 import { GOALS } from './calculations';
 
@@ -23,12 +23,6 @@ const SETTING_CHOICES = { theme: THEMES, goal: GOALS };
 
 export function saveSetting(key, value) {
   return db.settings.put({ key, value });
-}
-
-export function todayStr(offsetDays = 0) {
-  const d = new Date();
-  d.setDate(d.getDate() + offsetDays);
-  return toDateStr(d);
 }
 
 export async function getAllLogs() {
@@ -88,20 +82,25 @@ export async function importBackup(data) {
     }
     // Thrown inside the transaction so nothing from this file is kept.
     if (data.logs.length && !saved.logs) throw new Error('No valid entries found in this file.');
-    const existing = await db.phases.toArray();
-    const have = new Set(existing.map((p) => p.name + p.startDate));
-    let active = existing.find((p) => !p.endDate);
+    const all = await db.phases.toArray();
     for (const { name, startDate, endDate } of phases) {
       if (typeof name !== 'string' || !DATE_RE.test(startDate) || (endDate && !DATE_RE.test(endDate))) continue;
-      if (have.has(name + startDate)) continue;
-      let end = endDate || null;
+      const f = { name, startDate, endDate: endDate || null };
+      // Already here, maybe with a moved start or end: the same name on overlapping days.
+      if (all.some((p) => p.name === name && overlaps(p, f))) continue;
       // Only one phase may stay open: the one that started last. The other ends the day before it.
-      if (!end && active) {
-        if (startDate > active.startDate) await db.phases.update(active.id, { endDate: addDays(startDate, -1) });
-        else end = startDate < active.startDate ? addDays(active.startDate, -1) : startDate;
+      const active = all.find((p) => !p.endDate);
+      const activeEnd = !f.endDate && active && startDate > active.startDate ? addDays(startDate, -1) : null;
+      if (!f.endDate && active && !activeEnd) f.endDate = addDays(active.startDate, -1);
+      if (f.endDate && f.endDate < startDate) continue;
+      // Phases never share a day.
+      if (all.some((p) => overlaps(p === active ? { ...p, endDate: activeEnd } : p, f))) continue;
+      if (activeEnd) {
+        await db.phases.update(active.id, { endDate: activeEnd });
+        active.endDate = activeEnd;
       }
-      const id = await db.phases.add({ name, startDate, endDate: end });
-      if (!end) active = { id, startDate };
+      f.id = await db.phases.add(f);
+      all.push(f);
       saved.phases++;
     }
     for (const key of Object.keys(SETTING_DEFAULTS)) {
@@ -113,24 +112,21 @@ export async function importBackup(data) {
   return saved;
 }
 
+const overlaps = (a, b) => a.startDate <= (b.endDate || '9999-12-31') && b.startDate <= (a.endDate || '9999-12-31');
+
 export async function getAllPhases() {
   const rows = await db.phases.toArray();
   return rows.sort((a, b) => (a.startDate < b.startDate ? -1 : 1));
 }
 
-export async function getActivePhase() {
-  const all = await getAllPhases();
-  return all.find((p) => !p.endDate) || null;
-}
-
-/** Starts a new open-ended phase, auto-closing whatever phase was active the day before it begins. */
+/** Starts a new open-ended phase after the last one, which ends the day before if it is still open or would overlap. */
 export function startPhase(name, startDate) {
   return db.transaction('rw', db.phases, async () => {
-    const active = await getActivePhase();
-    if (active && startDate <= active.startDate) {
-      throw new Error(`Start date must be after "${active.name}" began (${active.startDate}).`);
+    const last = (await getAllPhases()).at(-1);
+    if (last && startDate <= last.startDate) {
+      throw new Error(`Start date must be after "${last.name}" began (${last.startDate}).`);
     }
-    if (active) await db.phases.update(active.id, { endDate: addDays(startDate, -1) });
+    if (last && (!last.endDate || last.endDate >= startDate)) await db.phases.update(last.id, { endDate: addDays(startDate, -1) });
     await db.phases.add({ name, startDate, endDate: null });
   });
 }

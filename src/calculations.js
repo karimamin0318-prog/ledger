@@ -2,6 +2,7 @@ import { toDate, toDateStr, daysBetween, addDays } from './dates';
 
 const KCAL_PER_KG = 7700;
 export const MIN_DAYS_FOR_TDEE = 14; // 2 weeks minimum
+export const MIN_CALORIE_DAYS = 7;
 
 /** Filters logs down to those falling within a phase's date range. `null` phase means "all time". */
 export function logsInPhase(logs, phase) {
@@ -92,8 +93,9 @@ export function computeAdaptiveTDEE(logs) {
   if (daysElapsed < MIN_DAYS_FOR_TDEE) {
     return { ...base, ready: false, daysElapsed, avgCalories, deltaWeight, reason: 'days' };
   }
-  if (calorieEntries.length < 7) {
-    return { ...base, ready: false, daysElapsed, avgCalories, deltaWeight, reason: 'calories' };
+  if (calorieEntries.length < MIN_CALORIE_DAYS) {
+    // Only days between the first and last weigh-in count, so the "more needed" hint uses the same count.
+    return { ...base, calorieCount: calorieEntries.length, ready: false, daysElapsed, avgCalories, deltaWeight, reason: 'calories' };
   }
 
   const dailyCaloricDelta = (deltaWeight * KCAL_PER_KG) / daysElapsed;
@@ -114,7 +116,7 @@ export const BRIDGE_DAYS = 28;
 
 /**
  * TDEE for one phase (null = all time). Until the phase has enough data of its own, the last
- * BRIDGE_DAYS before it (from the phase before) count too; that earlier phase's own number never changes.
+ * BRIDGE_DAYS before it count too, if the phase before reaches into them; that earlier phase's own number never changes.
  * When it bridges, the result also carries `own` (this phase alone) and `bridge` (the earlier phase).
  */
 export function phaseTDEE(logs, phase, phases) {
@@ -122,6 +124,7 @@ export function phaseTDEE(logs, phase, phases) {
   const prev = phase && phases.filter((p) => p.startDate < phase.startDate).at(-1);
   if (own.ready || !prev) return own;
   const from = addDays(phase.startDate, -BRIDGE_DAYS);
+  if (prev.endDate && prev.endDate < from) return own; // the phase before ended too long ago to stand in
   const bridged = computeAdaptiveTDEE(
     logsInPhase(logs, { startDate: from > prev.startDate ? from : prev.startDate, endDate: phase.endDate })
   );

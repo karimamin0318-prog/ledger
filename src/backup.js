@@ -1,4 +1,5 @@
-import { exportData, saveSetting, todayStr } from './db';
+import { exportData, saveSetting } from './db';
+import { todayStr } from './dates';
 
 /**
  * Saves a full backup: the share sheet on phones (pick OneDrive, Drive, ...), a download elsewhere. Returns true when saved.

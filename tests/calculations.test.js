@@ -37,6 +37,11 @@ describe('computeAdaptiveTDEE', () => {
     const logs = [0, 5].map((i) => ({ date: day(i), morningWeightKg: 80 }));
     expect(computeAdaptiveTDEE(logs).ready).toBe(false);
   });
+  it('counts only calorie days between the first and last weigh-in', () => {
+    // Day 0 has calories but no weight, so 6 of the 7 calorie days count.
+    const logs = Array.from({ length: 16 }, (_, i) => ({ date: day(i), morningWeightKg: i ? 80 : null, caloriesConsumed: i < 7 ? 2500 : null }));
+    expect(computeAdaptiveTDEE(logs)).toMatchObject({ ready: false, reason: 'calories', calorieCount: 6 });
+  });
 });
 
 it('logsInPhase respects both ends', () => {
@@ -84,6 +89,10 @@ describe('phaseTDEE', () => {
     expect(r.bridge).toBe(old);
     expect(r.own.ready).toBe(false);
     expect(r.tdee).toBeCloseTo((2500 * 28 + 2000 * 5) / 33); // days 2-29 of the old phase + days 30-34
+  });
+  it('does not borrow from a phase that ended more than 4 weeks before', () => {
+    const early = { id: 1, startDate: day(0), endDate: day(1) };
+    expect(phaseTDEE(logs, next, [early, next]).bridge).toBeUndefined();
   });
   it('the old phase keeps its own number', () => {
     expect(phaseTDEE(logs, old, [old, next]).tdee).toBeCloseTo(2500);

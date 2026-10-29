@@ -1,8 +1,8 @@
 import { useState } from 'react';
 import { Layers, ChevronLeft, ChevronRight } from 'lucide-react';
-import { startPhase, endPhase, movePhaseStart, todayStr } from '../db';
+import { startPhase, endPhase, movePhaseStart } from '../db';
 import { card, input, btnPrimary, btnSecondary, label } from '../ui';
-import { fmtShort } from '../dates';
+import { fmtShort, todayStr } from '../dates';
 
 /**
  * Phase card on the Log tab. Arrows browse phases (`phase` null = the "no active phase" slot);
